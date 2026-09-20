@@ -34,21 +34,20 @@ means anything, rather than trusting a vendor's claim about it.
 What you need:
 
 - Python 3.11+
-- A **RAG-Gate checkout** — this project deliberately reuses RAG-Gate's
-  tested risk-coverage/AURC math, EM/F1 scoring, and its prepared
-  HotpotQA data (1000 questions, frozen val/test split, prebuilt BM25
-  index) rather than reimplementing any of it. **RAG-Gate is currently a
-  private, unpublished research repository — this dependency is not yet
-  independently obtainable.** Without it, nothing that touches HotpotQA
-  will run; the code looks for it at `D:\Research\RAG-Gate` by default,
-  overridable via `RAG_GATE_PATH` for anyone who does have a copy. If
-  you're evaluating this repo without that access: `jevrag/decision.py`
-  and every file in `jevrag/primitives/` have no RAG-Gate dependency at
-  all and are readable/testable standalone — only `jevrag/eval/calibration.py`
-  (the AURC/risk-coverage math) and anything touching HotpotQA need it,
-  which means the CLI's full eval reports do too. Records someone with
-  access already generated for you are the practical way to see a real
-  report without the checkout yourself.
+- **HotpotQA data, only if you want to work with that dataset specifically**
+  — the frozen 1000-question val/test split and prebuilt BM25 index this
+  project's sufficiency/chunk-boundary/context-selection results were
+  measured on currently live in a private, unpublished research checkout,
+  not (yet) independently downloadable. The risk-coverage/AURC math and
+  EM/F1 scoring themselves are vendored directly into this package
+  (`jevrag/_vendor/`, with attribution) — installing and running `jevrag`,
+  including the calibration harness itself, needs no external checkout
+  at all. Only code that loads the actual HotpotQA question set
+  (`jevrag/benchmarks/hotpotqa.py`, and by extension `scripts/produce_records.py`)
+  looks for that data, at `D:\Research\RAG-Gate` by default, overridable
+  via `RAG_GATE_PATH`. Every other primitive (chunk-boundary,
+  context-selection, answer-abstain, cache-trust) and the abstraction
+  itself run and test fine without it.
 - A **Jev API key** (TypeSafe AI) — needed to generate fresh records.
   Not needed if you're only evaluating records someone already gave you.
 - An **OpenRouter key**, only if you want to generate your own fresh
@@ -412,7 +411,8 @@ against any equivalent account.
 ```
 jevrag/
   decision.py              # the Decision interface + the Jev backend
-  _rag_gate.py             # single import bridge to RAG-Gate's tested selective.py/evaluator.py
+  _rag_gate.py             # resolves the (only remaining) HotpotQA-data checkout path
+  _vendor/                 # vendored risk-coverage/AURC + EM/F1 math (no external checkout needed)
   primitives/
     sufficiency.py         # iterative, multi-round stopping decision
     chunk_boundary.py      # one-shot, pre-retrieval split/merge decision
@@ -447,6 +447,7 @@ scripts/
   eval_cache_safety_check.py          # the independent second cache-decision design's eval
   eval_docbench_primitives.py         # all five primitives, one real document, independent
   demo_docbench.py                     # DocBench exploratory demo (unscored)
+  snapshot_protected_hashes.py         # sha256 manifest proving a new primitive touched nothing protected
 tests/                                 # 163 tests across all five primitives
 ```
 
