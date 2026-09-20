@@ -28,6 +28,7 @@ sys.path.insert(0, str(REPO_ROOT))
 
 from scripts._load_run_keys import load_jev_key  # noqa: E402
 
+from jevrag._rag_gate import jevrag_kaggle_root  # noqa: E402
 from jevrag.benchmarks.scifact import (  # noqa: E402 — Muse's loader, as-is
     LICENSE_NOTE,
     N_TEST_QUERIES,
@@ -47,7 +48,7 @@ from jevrag.primitives.context_selection import (  # noqa: E402
     decide_query,
 )
 
-DATA_DIR = Path(r"D:\JevRAG-kaggle\scifact\scifact")
+DATA_DIR = jevrag_kaggle_root() / "scifact" / "scifact"
 
 
 def load_done_ids(path: Path) -> set[str]:

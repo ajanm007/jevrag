@@ -46,7 +46,10 @@ from pathlib import Path
 
 REPO_ROOT = Path(__file__).resolve().parent.parent
 sys.path.insert(0, str(REPO_ROOT))
-sys.path.insert(0, str(Path(r"D:\Research\RAG-Gate")))  # src.bm25_retriever
+
+from jevrag._rag_gate import rag_gate_root  # noqa: E402
+
+sys.path.insert(0, str(rag_gate_root()))  # src.bm25_retriever
 
 from scripts._load_run_keys import load_jev_key  # noqa: E402
 
@@ -68,7 +71,7 @@ from jevrag.primitives.context_selection import (  # noqa: E402
     decide_query_batched,
 )
 
-ASSETS = Path(r"D:\Research\RAG-Gate\hotpot qa")  # prebuilt index + corpus
+ASSETS = rag_gate_root() / "hotpot qa"  # prebuilt index + corpus
 DEFAULT_SEED = 20260920
 THRESHOLD_SWEEP = (0.3, 0.4, 0.5, 0.6, 0.7, 0.8)
 

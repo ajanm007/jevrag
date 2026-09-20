@@ -8,10 +8,11 @@ import json
 
 import pytest
 
+from jevrag._rag_gate import jevrag_kaggle_root
 from jevrag.benchmarks import docbench as db
 from jevrag.benchmarks import llm_judge as lj
 
-SAMPLE_DIR = r"D:\JevRAG-kaggle\docbench-sample"
+SAMPLE_DIR = str(jevrag_kaggle_root() / "docbench-sample")
 
 
 def test_chunk_sizes_overlap_and_pages():

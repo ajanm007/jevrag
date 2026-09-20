@@ -48,6 +48,7 @@ sys.path.insert(0, str(REPO_ROOT))
 
 from scripts._load_run_keys import load_jev_key  # noqa: E402
 
+from jevrag._rag_gate import jevrag_kaggle_root  # noqa: E402
 from jevrag.benchmarks.docbench import LICENSE_NOTE, extract_pdf_pages  # noqa: E402
 from jevrag.decision import JevDecision  # noqa: E402
 from jevrag.eval.calibration import (  # noqa: E402 — reuse, unchanged
@@ -66,7 +67,7 @@ from scripts.eval_chunk_boundary import (  # noqa: E402 — windows/baseline
     cosine_scores,
 )
 
-DOC_PDF = Path(r"D:\JevRAG-kaggle\docbench-input\0\P19-1598.pdf")
+DOC_PDF = jevrag_kaggle_root() / "docbench-input" / "0" / "P19-1598.pdf"
 DOC_ID = "doc0-p19-1598"
 OUT_PATH = REPO_ROOT / "outputs" / "doc22_chunk_sections.jsonl"
 SEED = 20260920

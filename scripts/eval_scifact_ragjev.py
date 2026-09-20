@@ -31,6 +31,7 @@ from jevrag.adapters.rag_jev_selector import (  # noqa: E402
     DEFAULT_MIN_RELEVANCE,
     select_passages,
 )
+from jevrag._rag_gate import jevrag_kaggle_root  # noqa: E402
 from jevrag.benchmarks.scifact import (  # noqa: E402
     LICENSE_NOTE,
     N_TEST_QUERIES,
@@ -45,7 +46,7 @@ from jevrag.benchmarks.scifact import (  # noqa: E402
 )
 from jevrag.eval.calibration import calibration_summary  # noqa: E402
 
-DATA_DIR = Path(r"D:\JevRAG-kaggle\scifact\scifact")
+DATA_DIR = jevrag_kaggle_root() / "scifact" / "scifact"
 
 
 def load_done_ids(path: Path) -> set[str]:

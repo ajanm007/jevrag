@@ -36,6 +36,7 @@ sys.path.insert(0, str(REPO_ROOT))
 
 from scripts._load_run_keys import load_jev_key, load_openrouter_key  # noqa: E402
 
+from jevrag._rag_gate import jevrag_kaggle_root, rag_gate_root  # noqa: E402
 from jevrag.benchmarks.docbench import (  # noqa: E402
     LICENSE_NOTE,
     TEXT_ONLY,
@@ -65,11 +66,11 @@ from jevrag.primitives.sufficiency import (  # noqa: E402
     run_sufficiency_with_trace,
 )
 
-DOC_DIR = Path(r"D:\JevRAG-kaggle\docbench-input\0")
+DOC_DIR = jevrag_kaggle_root() / "docbench-input" / "0"
 PDF_NAME = "P19-1598.pdf"
 QA_NAME = "0_qa.jsonl"
 DOC_ID = "doc0"
-PROMPT_TEMPLATE_FILE = Path(r"D:\Research\RAG-Gate\data\prompt_template.txt")
+PROMPT_TEMPLATE_FILE = rag_gate_root() / "data" / "prompt_template.txt"
 GENERATOR_MODEL = "openai/gpt-4o-mini"  # proven low-volume OpenRouter path
 OPENROUTER_BASE_URL = "https://openrouter.ai/api/v1"
 OUT_PREFIX = "outputs/doc20"

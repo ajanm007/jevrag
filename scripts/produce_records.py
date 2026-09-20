@@ -37,7 +37,10 @@ from pathlib import Path
 
 REPO_ROOT = Path(__file__).resolve().parent.parent
 sys.path.insert(0, str(REPO_ROOT))
-sys.path.insert(0, str(Path(r"D:\Research\RAG-Gate")))  # src.bm25_retriever
+
+from jevrag._rag_gate import rag_gate_root  # noqa: E402
+
+sys.path.insert(0, str(rag_gate_root()))  # src.bm25_retriever
 
 from scripts._load_run_keys import load_jev_key, load_openrouter_key  # noqa: E402
 
@@ -51,8 +54,8 @@ from jevrag.primitives.sufficiency import (  # noqa: E402
     validate_handoff_record,
 )
 
-ASSETS = Path(r"D:\Research\RAG-Gate\hotpot qa")  # prebuilt bm25_index.pkl + corpus
-PROMPT_TEMPLATE_FILE = Path(r"D:\Research\RAG-Gate\data\prompt_template.txt")
+ASSETS = rag_gate_root() / "hotpot qa"  # prebuilt bm25_index.pkl + corpus
+PROMPT_TEMPLATE_FILE = rag_gate_root() / "data" / "prompt_template.txt"
 
 GENERATOR_MODEL = "qwen/qwen3-8b"  # via OpenRouter; temperature 0
 GENERATOR_ID = f"openrouter:{GENERATOR_MODEL}"

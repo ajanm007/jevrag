@@ -11,7 +11,8 @@ works, not to produce a metric.
 DocBench license disclosure: DocBench's licensing is unclarified — no
 LICENSE file exists in its repository and an open issue asking the authors
 is unanswered as of 2026-09-20. Used here for research/evaluation only.
-The PDF stays outside the repo (default: D:\\JevRAG-kaggle\\docbench-sample).
+The PDF stays outside the repo (default: <JEVRAG_KAGGLE_PATH>\\docbench-sample,
+JEVRAG_KAGGLE_PATH itself defaulting to D:\\JevRAG-kaggle).
 
 Design note: the generator is the SAME OpenRouter closure as the HotpotQA
 runs (scripts.produce_records.make_answer_fn) — one low-volume use, a few
@@ -29,6 +30,7 @@ sys.path.insert(0, str(REPO_ROOT))
 
 from scripts._load_run_keys import load_jev_key, load_openrouter_key  # noqa: E402
 
+from jevrag._rag_gate import jevrag_kaggle_root, rag_gate_root  # noqa: E402
 from jevrag.benchmarks.docbench import (  # noqa: E402
     LICENSE_NOTE,
     TEXT_ONLY,
@@ -46,10 +48,10 @@ from jevrag.primitives.sufficiency import (  # noqa: E402
     run_sufficiency_with_trace,
 )
 
-SAMPLE_DIR = Path(r"D:\JevRAG-kaggle\docbench-sample")
+SAMPLE_DIR = jevrag_kaggle_root() / "docbench-sample"
 PDF_NAME = "P19-1598.pdf"
 QA_NAME = "0_qa.jsonl"
-PROMPT_TEMPLATE_FILE = Path(r"D:\Research\RAG-Gate\data\prompt_template.txt")
+PROMPT_TEMPLATE_FILE = rag_gate_root() / "data" / "prompt_template.txt"
 
 GENERATOR_MODEL = "qwen/qwen3-8b"  # same closure as the HotpotQA runs
 OPENROUTER_BASE_URL = "https://openrouter.ai/api/v1"

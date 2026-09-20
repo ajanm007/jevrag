@@ -24,7 +24,10 @@ from pathlib import Path
 
 REPO_ROOT = Path(__file__).resolve().parent.parent
 sys.path.insert(0, str(REPO_ROOT))
-sys.path.insert(0, str(Path(r"D:\Research\RAG-Gate")))
+
+from jevrag._rag_gate import rag_gate_root  # noqa: E402
+
+sys.path.insert(0, str(rag_gate_root()))
 
 from scripts._load_run_keys import load_jev_key, load_openrouter_key  # noqa: E402
 from scripts.produce_records import (  # noqa: E402 — reuse, not duplication

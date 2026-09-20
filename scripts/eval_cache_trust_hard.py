@@ -38,7 +38,10 @@ from pathlib import Path
 
 REPO_ROOT = Path(__file__).resolve().parent.parent
 sys.path.insert(0, str(REPO_ROOT))
-sys.path.insert(0, str(Path(r"D:\Research\RAG-Gate")))
+
+from jevrag._rag_gate import rag_gate_root  # noqa: E402
+
+sys.path.insert(0, str(rag_gate_root()))
 
 import requests  # noqa: E402
 
