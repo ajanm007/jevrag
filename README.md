@@ -37,10 +37,18 @@ What you need:
 - A **RAG-Gate checkout** — this project deliberately reuses RAG-Gate's
   tested risk-coverage/AURC math, EM/F1 scoring, and its prepared
   HotpotQA data (1000 questions, frozen val/test split, prebuilt BM25
-  index) rather than reimplementing any of it. By default the code looks
-  for it at `D:\Research\RAG-Gate`; point `RAG_GATE_PATH` at wherever
-  your own checkout lives if that's not where it sits. Without this,
-  nothing that touches HotpotQA will run.
+  index) rather than reimplementing any of it. **RAG-Gate is currently a
+  private, unpublished research repository — this dependency is not yet
+  independently obtainable.** Without it, nothing that touches HotpotQA
+  will run; the code looks for it at `D:\Research\RAG-Gate` by default,
+  overridable via `RAG_GATE_PATH` for anyone who does have a copy. If
+  you're evaluating this repo without that access: `jevrag/decision.py`
+  and every file in `jevrag/primitives/` have no RAG-Gate dependency at
+  all and are readable/testable standalone — only `jevrag/eval/calibration.py`
+  (the AURC/risk-coverage math) and anything touching HotpotQA need it,
+  which means the CLI's full eval reports do too. Records someone with
+  access already generated for you are the practical way to see a real
+  report without the checkout yourself.
 - A **Jev API key** (TypeSafe AI) — needed to generate fresh records.
   Not needed if you're only evaluating records someone already gave you.
 - An **OpenRouter key**, only if you want to generate your own fresh
