@@ -1,0 +1,38 @@
+# Secrets — never commit
+.env
+.env.*
+!.env.example
+
+# Python
+__pycache__/
+*.py[cod]
+*.egg-info/
+.venv/
+venv/
+.pytest_cache/
+.ruff_cache/
+.mypy_cache/
+
+# Eval artifacts — regenerate, don't commit
+outputs/
+results/
+records/
+reports/
+*.log
+
+# Inter-agent scratch — review packets, handoffs, working notes
+tempnotes/
+
+# Internal team coordination — roles, packet/report protocol, corrections
+# log. Process scaffolding for how the team works, not user-facing docs.
+TEAM_BRIEF.md
+
+# Internal scope-decision history (v1 -> v2 -> v3 cuts, novelty ledger).
+# Process record, not user-facing documentation.
+docs/prd/
+
+# Notebooks — run-infrastructure, not library code. Environment-coupled
+# (Kaggle paths, Secrets, T4 model loading) and output cells can leak keys.
+# scripts/produce_records.py is the portable reproduction path.
+*.ipynb
+.ipynb_checkpoints/

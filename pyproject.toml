@@ -1,0 +1,16 @@
+[build-system]
+requires = ["setuptools>=61"]
+build-backend = "setuptools.build_meta"
+
+[project]
+name = "jevrag"
+version = "0.1.0"
+description = "A decision-native RAG controller: state -> Decision -> confidence -> action"
+requires-python = ">=3.11"
+dependencies = ["numpy"]
+
+[project.scripts]
+jevrag = "jevrag.__main__:main"
+
+[tool.setuptools.packages.find]
+include = ["jevrag*"]
