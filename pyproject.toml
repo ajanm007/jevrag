@@ -10,6 +10,9 @@ readme = "README.md"
 license = "MIT"
 requires-python = ">=3.11"
 dependencies = ["numpy", "typesafe-sdk"]
+authors = [
+    { name = "Anmol Sethi", email = "ajanmol3404@gmail.com" },
+]
 classifiers = [
     "Development Status :: 3 - Alpha",
     "Intended Audience :: Science/Research",
@@ -20,9 +23,10 @@ classifiers = [
     "Programming Language :: Python :: 3.13",
     "Topic :: Scientific/Engineering :: Artificial Intelligence",
 ]
-# TODO(authors): needs a real name/email from Anmol, not invented here.
-# TODO(urls): point Homepage/Repository at the GitHub repo once it has
-# real commits (Anmol's parallel effort).
+
+[project.urls]
+Homepage = "https://github.com/ajanm007/jevrag"
+Repository = "https://github.com/ajanm007/jevrag"
 
 [project.scripts]
 jevrag = "jevrag.__main__:main"

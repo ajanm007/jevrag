@@ -97,7 +97,7 @@ What you need:
   records rather than evaluate existing ones — it's the answer generator.
 
 ```bash
-git clone <this-repo-url>
+git clone https://github.com/ajanm007/jevrag.git
 cd jevrag
 pip install -e .
 ```
