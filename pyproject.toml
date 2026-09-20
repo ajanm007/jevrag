@@ -6,8 +6,24 @@ build-backend = "setuptools.build_meta"
 name = "jevrag"
 version = "0.1.0"
 description = "A decision-native RAG controller: state -> Decision -> confidence -> action"
+readme = "README.md"
 requires-python = ">=3.11"
-dependencies = ["numpy"]
+dependencies = ["numpy", "typesafe-sdk"]
+classifiers = [
+    "Development Status :: 3 - Alpha",
+    "Intended Audience :: Science/Research",
+    "Operating System :: OS Independent",
+    "Programming Language :: Python :: 3",
+    "Programming Language :: Python :: 3.11",
+    "Programming Language :: Python :: 3.12",
+    "Programming Language :: Python :: 3.13",
+    "Topic :: Scientific/Engineering :: Artificial Intelligence",
+]
+# TODO(license): blocked on Anmol's explicit choice (packet 24 Item 1).
+# Do NOT ship a guessed license to fill this.
+# TODO(authors): needs a real name/email from Anmol, not invented here.
+# TODO(urls): point Homepage/Repository at the GitHub repo once it has
+# real commits (Anmol's parallel effort).
 
 [project.scripts]
 jevrag = "jevrag.__main__:main"
