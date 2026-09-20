@@ -1,12 +1,24 @@
 # JevRAG
 
-A common decision substrate for RAG (retrieval-augmented generation)
-pipelines: a shared abstraction, a swappable decision backend, and a
-calibration-first evaluation harness.
+**A common decision substrate for RAG (retrieval-augmented generation) pipelines** — a shared abstraction, a swappable decision backend, and a calibration-first evaluation harness.
 
 ```
 state → Decision → confidence → action
 ```
+
+![Python 3.11+](https://img.shields.io/badge/python-3.11%2B-blue) ![Tests](https://img.shields.io/badge/tests-163%20passing-brightgreen) ![Status](https://img.shields.io/badge/status-V1%20%2B%20V1.1%20complete-informational)
+
+| Decision | Shape | Status |
+|---|---|---|
+| [evidence-sufficiency](#evidence-sufficiency-n700-test-questions--the-headline-result) | iterative, multi-round | ✅ Built · evaluated (val n=300, test n=700) |
+| [chunk-boundary](#chunk-boundary--the-generalization-test) | one-shot, pre-retrieval | ✅ Built · evaluated · generalization hash-proven |
+| [context-selection](#context-selection--wrapped-vs-rebuilt-on-two-real-benchmarks) | one-shot, per-passage | ✅ Wrap + from-scratch rebuild, both evaluated |
+| [answer-abstain](#answer-abstain--a-post-generation-grounding-check-benchmarked-against-a-free-alternative) | one-shot, post-generation | ✅ Built · benchmarked against a free alternative |
+| [cache-trust](#cache-trust--extracted-from-real-prior-art-independently-corroborated) | one-shot, structural state | ✅ Extracted · independently corroborated |
+
+**Jump to:** [The idea](#the-idea) · [Quickstart](#quickstart) · [What's built](#whats-actually-built-and-proven-so-far) · [Full CLI](#the-full-cli-all-five-primitives) · [Results](#results) · [Reproducing this](#reproducing-this) · [Project layout](#project-layout)
+
+---
 
 ## The idea
 
@@ -28,6 +40,37 @@ TypeSafe AI, is the first backend actually wired up; it is not the point of
 the project. The point is the substrate and, just as importantly, an
 evaluation harness that reports honestly on whether a decision's confidence
 means anything, rather than trusting a vendor's claim about it.
+
+**Where the five decisions sit in a RAG pipeline** — this is the locked
+target architecture (each box below is one `Decision` call); today all
+five are built and evaluated *independently*, not yet wired into this
+live flow end to end:
+
+```mermaid
+flowchart TD
+    DOC[Document ingestion] --> CB{Chunk-Boundary}
+    CB -->|split/merge decision| IDX[(Index)]
+
+    Q[Query] --> RET[Retrieval]
+    IDX --> RET
+    RET --> CS{Context-Selection}
+    CS -->|passage earns a slot?| SUFF{Sufficiency}
+    SUFF -->|NO: retrieve another round| RET
+    SUFF -->|YES| GEN[Generate answer]
+    GEN --> AA{Answer-Abstain}
+    AA -->|grounded| ANS[Answer]
+    AA -->|not grounded| NOANS[No answer]
+
+    Q --> CACHE[Cache lookup]
+    CACHE --> CT{Cache-Trust}
+    CT -->|safe| CACHED[Cached answer]
+    CT -->|unsafe| RET
+```
+
+*Diamonds are the five `Decision` calls this repo evaluates; the cache path
+is a separate, parallel short-circuit, not a step inside the main flow.*
+
+---
 
 ## Quickstart
 
@@ -91,6 +134,8 @@ already have a records file from someone else's run (`records/` and
 `outputs/` aren't committed to this repo, since they're regenerated
 output, but they're easy to share directly), you can run the eval step
 immediately without any key at all.
+
+---
 
 ## What's actually built and proven so far
 
@@ -170,6 +215,8 @@ Concretely, what exists:
   risk-coverage, cost, and (where applicable) a baseline comparison. Every
   primitive is reachable this way, not just the first one built.
 
+---
+
 ## The full CLI, all five primitives
 
 The Quickstart above covers sufficiency end to end. Every other primitive
@@ -190,6 +237,8 @@ or five days ago. Full flag reference for any primitive:
 `jevrag eval <primitive> --help`. See `INTERFACE.md` for the exact
 records shape sufficiency expects; each other primitive documents its own
 shape in its module docstring.
+
+---
 
 ## Results
 
@@ -384,7 +433,22 @@ grounding, cache safety), different implementations, the same Jev backend
 throughout — calibration quality varies by more than a full Brier-skill
 point, from −0.45 (worst: sufficiency, an iterative stopping decision with
 a skewed outcome distribution) to +0.96 (best: cache-trust, on an
-admittedly easy first scenario). **The pattern that holds across every
+admittedly easy first scenario):
+
+| Decision | Domain | Brier skill |
+|---|---|---:|
+| sufficiency (test, n=700) | multi-hop QA, iterative stopping | −0.45 |
+| SciFact / `rag-jev` reproduction (n=300×20) | scientific claim verification | −0.30 |
+| context-selection, `rag-jev` adapter (matched, n=192) | multi-hop QA relevance | +0.12 |
+| answer-abstain (n=30) | post-generation grounding | +0.07 |
+| context-selection, from-scratch per-passage (matched, n=192) | multi-hop QA relevance | +0.24 |
+| chunk-boundary (n=119) | document structure | +0.21 |
+| context-selection, from-scratch batched (n=20, exploratory) | multi-hop QA relevance | +0.42 |
+| cache-trust (n=24, easy scenario) | cache safety | +0.96 |
+
+*(Higher is better; 0 = no better than the base rate, negative = worse than guessing.)*
+
+**The pattern that holds across every
 measurement: Jev's confidence reliably *ranks* correct above incorrect —
 every single AURC measured has sat meaningfully between the oracle and
 random baselines — but its *absolute* calibration is a property of the
@@ -393,6 +457,8 @@ backend.** A sparse or skewed positive rate (sufficiency's stopping
 decision, SciFact's ~5% relevance rate) consistently produces worse
 absolute calibration than a more balanced one, regardless of which
 decision or implementation is being scored.
+
+---
 
 ## Reproducing this
 
@@ -405,6 +471,8 @@ it's throwaway infrastructure specific to one hosting setup, not part of the
 reusable library. The other primitives' results were generated with a mix
 of hosted API calls (OpenRouter, Gemini) — small, cheap runs, reproducible
 against any equivalent account.
+
+---
 
 ## Project layout
 
