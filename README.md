@@ -534,7 +534,7 @@ Future Work, not part of the original weekend bar. See
 full picture and the [Results](#results) section for what's still open
 (e.g. calibration is real but uneven — that's a finding, not a defect).
 
-**License:** not yet chosen — this repository is not yet licensed for reuse.
+**License:** [MIT](LICENSE).
 
 ---
 
