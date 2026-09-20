@@ -46,6 +46,6 @@ def test_label_record_does_not_mutate():
     assert "correct" not in rec
 
 
-def test_evaluator_reexports_are_rag_gates():
-    assert hotpotqa.exact_match.__module__ == "rag_gate_evaluator"
-    assert hotpotqa.f1_score.__module__ == "rag_gate_evaluator"
+def test_evaluator_reexports_are_vendored():
+    assert hotpotqa.exact_match.__module__ == "jevrag._vendor.evaluator"
+    assert hotpotqa.f1_score.__module__ == "jevrag._vendor.evaluator"

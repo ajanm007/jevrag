@@ -91,9 +91,10 @@ def test_summary_aurc_bounds_order_on_good_signal():
     assert 0.0 <= s["ece"] <= 1.0
 
 
-def test_selective_reexports_are_rag_gates():
-    # These must be the rag-gate functions, not reimplementations (brief §5).
-    assert cal.aurc.__module__ == "rag_gate_selective"
-    assert cal.risk_coverage_curve.__module__ == "rag_gate_selective"
+def test_selective_reexports_are_vendored():
+    # These must be the vendored risk-coverage functions, not local
+    # reimplementations.
+    assert cal.aurc.__module__ == "jevrag._vendor.selective"
+    assert cal.risk_coverage_curve.__module__ == "jevrag._vendor.selective"
     curve = cal.risk_coverage_curve(np.array([0.9, 0.1]), np.array([1, 0]))
     assert set(curve) >= {"coverage", "selective_risk", "threshold"}

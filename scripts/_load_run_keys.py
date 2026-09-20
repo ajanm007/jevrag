@@ -1,20 +1,17 @@
 """Key loading for live runs. Used only by scripts/produce_records.py.
 
 Rules:
-- Both keys are read from D:\\JevRAG\\.env (the repo's own env file), which is
-  gitignored. It is the single source of truth: rotate there.
+- Both keys are read from the repo's own .env file (gitignored, resolved
+  relative to this script so it works regardless of where the repo is
+  cloned). It is the single source of truth: rotate there.
 - Keys are returned, never logged. Nothing in this module prints a key.
-
-Superseded: an earlier version read OPEN_ROUTER_KEY by path from
-D:\\Rag gate crate\\src\\.env. That was reversed — the key now lives here, and
-reading the crate copy would silently use a revoked key after a rotation.
 """
 
 from __future__ import annotations
 
 from pathlib import Path
 
-JEVRAG_ENV = Path(r"D:\JevRAG\.env")
+JEVRAG_ENV = Path(__file__).resolve().parent.parent / ".env"
 
 
 def _read_key(env_path: Path, name: str) -> str:
