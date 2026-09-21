@@ -1,0 +1,31 @@
+name: Tests
+
+# Every push to master and every PR gets the full suite. A broken commit
+# or PR must show a red X here — no step below swallows pytest's exit
+# code (no `|| true`, no `continue-on-error`), so any failing test fails
+# the job and the failure is visible in the Actions tab, the commit
+# status, and (with branch protection) the PR merge panel.
+on:
+  push:
+    branches: [master]
+  pull_request:
+
+jobs:
+  tests:
+    runs-on: ubuntu-latest
+    # One Python version's failure must not cancel or mask another's:
+    # fail-fast is off so all three matrix jobs always report.
+    strategy:
+      fail-fast: false
+      matrix:
+        python-version: ["3.11", "3.12", "3.13"]
+    steps:
+      - uses: actions/checkout@v4
+      - name: Set up Python ${{ matrix.python-version }}
+        uses: actions/setup-python@v5
+        with:
+          python-version: ${{ matrix.python-version }}
+      - name: Install package with test extras
+        run: pip install -e ".[test]"
+      - name: Run test suite
+        run: pytest -q
