@@ -14,6 +14,7 @@ from jevrag.__main__ import (
     main,
     print_report,
 )
+from jevrag.benchmarks import hotpotqa
 
 GEN = "openrouter:qwen/qwen3-8b"
 
@@ -137,6 +138,15 @@ def test_cli_refuses_mismatched_files(tmp_path, capsys, monkeypatch):
     assert "parity violated" in capsys.readouterr().err
 
 
+@pytest.mark.skipif(
+    not hotpotqa.dataset_path().exists(),
+    reason=(
+        "cmd_eval_sufficiency resolves the real HotpotQA split lookup before "
+        "reaching the generator guard this test checks; needs the real data "
+        "file (see test_hotpotqa.py's skip reason) even though the assertion "
+        "itself is only about the generator field"
+    ),
+)
 def test_cli_rejects_record_without_generator(tmp_path, capsys):
     gated = tmp_path / "gated.jsonl"
     rec = make_record()
