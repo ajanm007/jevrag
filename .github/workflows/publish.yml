@@ -11,6 +11,8 @@ on:
 jobs:
   build:
     runs-on: ubuntu-latest
+    permissions:
+      contents: read  # only checks out code and builds a package
     steps:
       - uses: actions/checkout@v4
       - uses: actions/setup-python@v5
