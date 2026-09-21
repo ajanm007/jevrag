@@ -24,6 +24,18 @@ classifiers = [
     "Topic :: Scientific/Engineering :: Artificial Intelligence",
 ]
 
+# Test-only deps (NOT runtime): pytest for the suite, rag-jev for the
+# wrapped-adapter comparison test, rank_bm25 + pypdf for the
+# benchmark-retrieval tests. typesafe-sdk is already a runtime dependency
+# numpy is pinned to 2.3.5 TEMPORARILY and only here (runtime stays
+# unpinned): jevrag/_vendor/selective.py calls np.trapz, which NumPy
+# removed after 2.3.x, breaking AURC on newer versions. The one-line fix
+# (np.trapezoid) lives in _vendor/ and is out of scope for the packet
+# that added this pin — see REPORT_MUSE_25.md. Do not "fix" CI by
+# widening this pin; fix selective.py instead, then unpin here.
+[project.optional-dependencies]
+test = ["pytest", "rag-jev", "rank-bm25", "pypdf", "numpy==2.3.5"]
+
 [project.urls]
 Homepage = "https://github.com/ajanm007/jevrag"
 Repository = "https://github.com/ajanm007/jevrag"

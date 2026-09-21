@@ -4,7 +4,16 @@ import pytest
 
 from jevrag.benchmarks import hotpotqa
 
+_NO_HOTPOTQA_DATA = not hotpotqa.dataset_path().exists()
+_SKIP_REASON = (
+    "requires the real HotpotQA data file (data/hotpotqa_1000.json), which "
+    "lives in a private, unpublished research checkout and is deliberately "
+    "not vendored or downloadable (see README) — always skipped in CI, "
+    "expected to pass locally on a machine with RAG_GATE_PATH set"
+)
 
+
+@pytest.mark.skipif(_NO_HOTPOTQA_DATA, reason=_SKIP_REASON)
 def test_dataset_loads_with_frozen_splits():
     questions = hotpotqa.load_questions()
     assert len(questions) == 1000
@@ -14,6 +23,7 @@ def test_dataset_loads_with_frozen_splits():
     assert types <= {"bridge", "comparison"}
 
 
+@pytest.mark.skipif(_NO_HOTPOTQA_DATA, reason=_SKIP_REASON)
 def test_split_filtering():
     val = hotpotqa.load_questions(split="val")
     test = hotpotqa.load_questions(split="test")
@@ -22,6 +32,7 @@ def test_split_filtering():
     assert len(val) + len(test) == 1000
 
 
+@pytest.mark.skipif(_NO_HOTPOTQA_DATA, reason=_SKIP_REASON)
 def test_split_lookup_covers_every_question():
     lookup = hotpotqa.split_lookup()
     assert len(lookup) == 1000
