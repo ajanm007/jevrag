@@ -6,7 +6,7 @@
 state → Decision → confidence → action
 ```
 
-![Python 3.11+](https://img.shields.io/badge/python-3.11%2B-blue) ![Tests](https://img.shields.io/badge/tests-163%20passing-brightgreen) ![Status](https://img.shields.io/badge/status-V1%20%2B%20V1.1%20complete-informational)
+![Python 3.11+](https://img.shields.io/badge/python-3.11%2B-blue) ![Tests](https://github.com/ajanm007/jevrag/actions/workflows/tests.yml/badge.svg) ![Status](https://img.shields.io/badge/status-v0.2.0%20in%20progress-informational)
 
 | Decision | Shape | Status |
 |---|---|---|
@@ -15,8 +15,12 @@ state → Decision → confidence → action
 | [context-selection](#context-selection--wrapped-vs-rebuilt-on-two-real-benchmarks) | one-shot, per-passage | ✅ Wrap + from-scratch rebuild, both evaluated |
 | [answer-abstain](#answer-abstain--a-post-generation-grounding-check-benchmarked-against-a-free-alternative) | one-shot, post-generation | ✅ Built · benchmarked against a free alternative |
 | [cache-trust](#cache-trust--extracted-from-real-prior-art-independently-corroborated) | one-shot, structural state | ✅ Extracted · independently corroborated |
+| [the real pipeline](#the-real-pipeline) | all five, chained | ✅ Live · two real end-to-end runs, CRC-opt-in verified |
+| [CRC calibration layer](#the-crc-calibration-layer) | per-decision threshold | ✅ Built · one real bug found, fixed, and disclosed |
+| [a second Decision backend](#a-second-decision-backend) | logprob, zero-cost | ✅ Built · proves the abstraction generalizes to backends too |
+| [shadow / observe mode](#shadow-observe-mode) | challenger comparison | ✅ Built · real what-if run against production |
 
-**Jump to:** [The idea](#the-idea) · [Quickstart](#quickstart) · [What's built](#whats-actually-built-and-proven-so-far) · [Full CLI](#the-full-cli-all-five-primitives) · [Results](#results) · [Reproducing this](#reproducing-this) · [Project layout](#project-layout)
+**Jump to:** [The idea](#the-idea) · [Quickstart](#quickstart) · [What's built](#whats-actually-built-and-proven-so-far) · [Full CLI](#the-full-cli-all-five-primitives) · [Results](#results) · [The real pipeline](#the-real-pipeline) · [Reproducing this](#reproducing-this) · [Project layout](#project-layout)
 
 ---
 
@@ -41,10 +45,10 @@ the project. The point is the substrate and, just as importantly, an
 evaluation harness that reports honestly on whether a decision's confidence
 means anything, rather than trusting a vendor's claim about it.
 
-**Where the five decisions sit in a RAG pipeline** — this is the locked
-target architecture (each box below is one `Decision` call); today all
-five are built and evaluated *independently*, not yet wired into this
-live flow end to end:
+**Where the five decisions sit in a RAG pipeline** — this is the real,
+wired architecture (each box below is one `Decision` call). It's live:
+`jevrag/pipeline.py` chains all five end to end, verified on real
+documents (see [The real pipeline](#the-real-pipeline) in Results):
 
 ```mermaid
 flowchart TD
@@ -214,6 +218,25 @@ Concretely, what exists:
   pre-generated records and prints the full report: accuracy, calibration,
   risk-coverage, cost, and (where applicable) a baseline comparison. Every
   primitive is reachable this way, not just the first one built.
+- **A real, live, chained pipeline** (`jevrag/pipeline.py`) — all five
+  decisions actually wired end to end per the locked architecture
+  (chunk-boundary → index → context-selection every round → sufficiency
+  → answer-abstain, cache-trust as a parallel bypass), not just
+  evaluated side by side. See [The real pipeline](#the-real-pipeline).
+- **A per-decision CRC calibration layer** (`jevrag/eval/crc.py`) — pick
+  a threshold from a stated error budget instead of a guess, with a
+  real, disclosed distinction between the risk quantity CRC actually
+  bounds and the one people usually mean by "risk." See
+  [The CRC calibration layer](#the-crc-calibration-layer).
+- **A second real `Decision` backend** (`jevrag/backends/
+  logprob_decision.py`) — proves the abstraction's backend-swappability
+  claim against something other than a trivial test double, and gives
+  every primitive a zero-cost baseline. See
+  [A second Decision backend](#a-second-decision-backend).
+- **A shadow/observe wrapper** (`jevrag/backends/shadow.py`) — run a
+  challenger policy alongside a real one without ever affecting the
+  real result, logged to a JSONL ledger. See
+  [Shadow / observe mode](#shadow-observe-mode).
 
 ---
 
@@ -382,6 +405,22 @@ observed delta), not just judged as close by eye. The free signal is a
 real, legitimate alternative, not something this approach clearly
 obsoletes.
 
+A third signal was added to that same comparison later: **RAGAS's
+faithfulness metric** (an LLM-judge decomposition-and-verification method),
+scored on the identical 30 questions against the same EM ground truth.
+The headline is the confound, not the winner: with RAGAS's own default
+judge (gpt-4o-mini — the same model that generated the answers, so a
+self-judge), faithfulness ranks *worst* of the three (AURC 0.189); with a
+different-vendor judge (Gemini 2.5 Flash) it ranks *best* (AURC 0.100, vs.
+Jev's 0.154). The judge-model swing (0.09 AURC) is larger than any
+pairwise difference between the signals themselves, and no pairwise
+difference is statistically significant at n=30 (paired bootstrap, p ≥
+0.07; the largest gap, RAGAS[Gemini] vs. logprob, has a CI touching zero).
+Plainly: at this scale the abstention-gate comparison is **confound-limited,
+not signal-limited** — RAGAS's ranking depends more on the judge model than
+on its mechanism. Reusable script: `scripts/eval_ragas_faithfulness.py`
+(needs the `ragas` extra and live judge calls).
+
 ### cache-trust — extracted from real prior art, independently corroborated
 
 Real, shipped prior art exists for this decision (a cache-safety gate
@@ -409,6 +448,152 @@ built cold with zero exposure to the first implementation or its source
 material, converged on the same core architecture — same structural-only
 state, same two signal axes, same threshold-style verdict — real evidence
 the design is the natural solution to this decision, not an arbitrary one.
+
+### The real pipeline
+
+All five decisions above were evaluated independently at first. They're
+now actually chained: `jevrag/pipeline.py` implements the locked
+architecture exactly — chunk-boundary runs once at ingestion to build
+the index, context-selection filters candidates on *every* sufficiency
+round (not just once after retrieval), the sufficiency loop runs as
+before, and its output now really does flow into answer-abstain as the
+final gate (pass → answer, veto → no answer). Cache-trust stays a
+separate, parallel short-circuit, exactly as designed.
+
+**Two real, live runs on an actual document** (7 questions,
+`P19-1598.pdf`, a genuinely hard academic-prose document — base rates
+here have always been low, this is a wiring proof, not a fresh
+benchmark claim):
+
+| | Answered | Correct | Jev calls | Cost |
+|---|---|---|---|---|
+| Default thresholds | 3/7 | 1/7 | 146 (27 ingestion + 96 selection + 23 other) | $0.0072 |
+| CRC opt-in (alpha=0.3 at sufficiency + abstain) | 1/7 (cache only) | 1/7 | 160 | $0.0078 |
+
+The CRC run is the actual proof the opt-in threshold does something
+real inside a live chain, not just in isolation: a question that passed
+under the default threshold at 0.92 confidence — and was actually
+wrong — was correctly withheld once a real error budget was applied.
+
+**The flagged cost tradeoff, measured rather than estimated:**
+filtering on every round instead of once is real — a large majority of
+the default run's Jev calls were context-selection calls, since the same
+candidate pool gets re-judged each retrieval round with no memoization.
+That's a known, named optimization opportunity for a future pass, not a
+hidden cost.
+
+**A real, unflattering finding from the very first live run — chased
+down rather than smoothed over.** The first live run found
+chunk-boundary's chunking nondeterministic on the identical document (3
+splits in one run, 4 in another). Diagnosed with real evidence before
+fixing anything: candidate construction is byte-deterministic (identical
+candidate hashes across 7 fresh runs); the actual cause is Jev's own
+confidence varying near the 0.5 split/merge threshold on 2 of 9 boundary
+candidates. Fixed with mean-of-3 voting at ingestion (`chunk_repeats=3`
+in the pipeline, `repeats=1` legacy default elsewhere) — chosen over
+majority voting specifically because a 3-vote average stays a continuous
+probability, where a vote fraction would quantize and corrupt the
+calibration signal downstream. Verified 5/5 identical boundary sets
+across repeated post-fix runs, at roughly 3x the ingestion call cost
+(9 → 27 calls on this document) — and disclosed honestly, not oversold:
+one post-fix run's mean landed just 0.007 over the threshold on the same
+straddling candidate, so the fix reduces the flip probability, it
+doesn't guarantee it away.
+
+The re-run's 2/7 → 3/7 answered delta above is **not** claimed as an
+accuracy improvement — judge-correct stayed flat at 1/7 in both runs.
+The extra answered question's abstain confidence swung from 0.09 to 0.85
+across the pre/post-fix runs, coinciding with both the changed chunking
+and this primitive's already-known abstain-side variation — inseparable
+at n=7, stated as such rather than credited to the fix.
+
+Run it yourself: `python scripts/run_pipeline_doc.py` (see the script's
+own `--help` for CRC-alpha flags, `--repeats`, and document overrides).
+
+### The CRC calibration layer
+
+Every result above uses a single threshold per decision, picked by
+coverage target or by hand. `jevrag/eval/crc.py` adds a real
+alternative: conformal risk control (Angelopoulos et al. 2022) —
+state an acceptable error rate (`alpha`), get back the threshold whose
+*expected* risk is bounded by it, instead of guessing a cutoff and
+hoping.
+
+**Vendored, then a real bug found on real data, then fixed — and fixing
+it surfaced something more important than the bug itself.** The pure
+CRC math ported cleanly from prior art (same pattern as `selective.py`).
+Run on real sufficiency records, the guarantee held at alpha=0.30 but
+failed at alpha=0.10/0.20 — root-caused to Jev's confidence being
+2-decimal quantized, which breaks the naive threshold-comparison
+read-out under ties (the rank-selected cutoff was right; the
+`score >= threshold` rule over-answered whenever many rows tied at that
+value). Fixed with a deterministic per-row tie-break.
+
+**Re-verifying the fix surfaced a real methodological correction, not
+just a passing test:** CRC's actual guarantee bounds *marginal* risk
+(`P(answered AND wrong)`), not the *conditional* risk
+(`P(wrong | answered)`) every report — including the original prior
+art's own — had been comparing against alpha. They're different
+numbers. On real held-out data at alpha=0.10: conditional risk read
+0.14 (over budget), marginal risk read 0.017 (comfortably under). Both
+numbers are correct; conflating them makes a working guarantee look
+broken. Across 191 independent tie-break realizations, the marginal
+guarantee held **100% of the time at every alpha tested**; the
+conditional number (the one people actually want — "if I answer, how
+often am I wrong") did not, and getting *that* bounded reliably needs a
+different method. `crc_calibrate`/`crc_readout` now return both numbers
+explicitly, never blended into one "risk."
+
+A note on this was also left in the upstream research repo this method
+was vendored from, since the same conflation applies to its own
+published results, not just JevRAG's reuse of it.
+
+### A second Decision backend
+
+The abstraction's whole claim is that decision backends are swappable
+without touching the harness, the controller, or any primitive. Until
+now that had only been tested against `StubDecision`, a trivial,
+zero-cost test double built for unit tests. `jevrag/backends/
+logprob_decision.py` is the first real second implementation:
+confidence is the geometric-mean per-token probability of a generation
+(`exp(mean_logprob)`) — free, no network call, no API key, and a
+genuine probability with zero tunable parameters (rejected a
+sigmoid squash specifically because its parameters would be arbitrary,
+or worse, fitted to whatever it's being evaluated against).
+
+**It plugged in at the strongest acceptance-test level yet: not one
+pre-existing file changed, not even `decision.py`.** Run on
+answer-abstain's real 30-question 4o-mini records: AURC 0.1624,
+reproducing the earlier throwaway-script comparison to four decimals
+(expected — the mapping is strictly monotonic). The honest finding:
+ECE 0.31, Brier skill −0.20 — the same "ranks well, calibrates poorly"
+shape sufficiency showed, but from a backend with zero vendor model in
+it, which is real evidence the pattern isn't a Jev quirk. The mapping
+was frozen before running the eval and was not retuned to make that
+number look better.
+
+Every primitive now has a real, zero-cost baseline available to compare
+Jev against.
+
+### Shadow / observe mode
+
+`jevrag/backends/shadow.py` wraps any `Decision` backend to log what it
+*would* decide alongside a real decision, without ever changing what
+gets returned. Useful two ways: wrap the real governing backend for a
+production audit trail, or wrap a challenger backend for a live
+what-if comparison — the latter is what's actually demonstrated, since
+every JevRAG decision already evaluates for real (unlike some
+prior-art observe modes built for systems that otherwise skip
+evaluation entirely).
+
+**Real demo:** the free logprob backend run as a challenger against
+recorded Jev production decisions (same 30-question set). They agreed
+on only 20/30 decisions at a normal 0.5 threshold; where they
+disagreed, the challenger passed 10 answers Jev's real policy didn't.
+Production's passed-subset accuracy was 85%; the challenger's own
+passed subset was only 63% — no better than the overall base rate.
+Consistent with the overconfidence already found above: at an ordinary
+threshold, the free signal would have let more wrong answers through.
 
 ### Real documents, two of them, all five primitives, two different generators
 
@@ -479,28 +664,33 @@ against any equivalent account.
 ```
 jevrag/
   decision.py              # the Decision interface + the Jev backend
-  _rag_gate.py             # resolves the (only remaining) HotpotQA-data checkout path
-  _vendor/                 # vendored risk-coverage/AURC + EM/F1 math (no external checkout needed)
+  pipeline.py               # the real end-to-end controller, all five decisions chained
+  _rag_gate.py              # resolves the (only remaining) HotpotQA-data checkout path
+  _vendor/                  # vendored risk-coverage/AURC + EM/F1 + CRC math (no external checkout needed)
   primitives/
-    sufficiency.py         # iterative, multi-round stopping decision
-    chunk_boundary.py      # one-shot, pre-retrieval split/merge decision
-    context_selection.py   # one-shot, per-passage filter/select decision
-    answer_abstain.py      # one-shot, post-generation grounding decision
-    cache_trust.py         # one-shot, structural-state cache-serve decision (extraction)
-    cache_safety_check.py  # independent second design of the cache-trust decision
+    sufficiency.py          # iterative, multi-round stopping decision
+    chunk_boundary.py       # one-shot, pre-retrieval split/merge decision
+    context_selection.py    # one-shot, per-passage filter/select decision
+    answer_abstain.py       # one-shot, post-generation grounding decision
+    cache_trust.py          # one-shot, structural-state cache-serve decision (extraction)
+    cache_safety_check.py   # independent second design of the cache-trust decision
+  backends/
+    logprob_decision.py     # a second real Decision backend, zero-cost, no API calls
+    shadow.py                # observe-only wrapper: log a challenger decision, never change the real one
   adapters/
-    rag_jev_selector.py    # wraps the real rag-jev PyPI package for comparison
+    rag_jev_selector.py     # wraps the real rag-jev PyPI package for comparison
   eval/
-    calibration.py         # AURC/risk-coverage + ECE/MCE/Brier — shared, unmodified across all five primitives
-    cost.py                # token/latency accounting
+    calibration.py          # AURC/risk-coverage + ECE/MCE/Brier — shared, unmodified across all five primitives
+    crc.py                   # per-decision CRC threshold selection (conformal risk control)
+    cost.py                  # token/latency accounting
   benchmarks/
-    hotpotqa.py            # dataset loading + scoring
-    scifact.py             # BEIR/SciFact loading + NDCG@10 scoring
-    docbench.py            # real-document benchmark (two documents tested)
-    llm_judge.py           # LLM-judge scoring for benchmarks without exact-match ground truth
+    hotpotqa.py              # dataset loading + scoring
+    scifact.py                # BEIR/SciFact loading + NDCG@10 scoring
+    docbench.py                # real-document benchmark (two documents tested)
+    llm_judge.py                # LLM-judge scoring for benchmarks without exact-match ground truth
   baselines/
-    fixed_iteration.py     # the baseline evidence-sufficiency has to match or beat
-  __main__.py              # the `jevrag eval <primitive>` command, all five wired in
+    fixed_iteration.py      # the baseline evidence-sufficiency has to match or beat
+  __main__.py                # the `jevrag eval <primitive>` command, all five wired in, CRC-alpha flag
 scripts/
   produce_records.py                 # generates sufficiency's records
   eval_chunk_boundary.py             # chunk-boundary's Wikipedia eval script
@@ -510,13 +700,17 @@ scripts/
   eval_scifact_ragjev.py             # rag-jev's SciFact reproduction
   eval_scifact_context_selection.py  # SciFact head-to-head, from-scratch primitive
   eval_answer_abstain.py             # answer-abstain's own eval script
+  eval_ragas_faithfulness.py         # RAGAS faithfulness as a third abstention-gate signal
   eval_cache_trust.py                # cache-trust's own eval script
   eval_cache_trust_hard.py           # cache-trust's near-threshold hardening eval
   eval_cache_safety_check.py         # the independent second cache-decision design's eval
   eval_docbench_primitives.py        # all five primitives, one real document, independent
   demo_docbench.py                   # DocBench exploratory demo (unscored)
+  demo_shadow_mode.py                # shadow-mode challenger demo against real records
+  report_shadow_ledger.py            # reads a shadow-mode ledger back into a report
+  run_pipeline_doc.py                # runs the real end-to-end pipeline on a document
   snapshot_protected_hashes.py       # sha256 manifest proving a new primitive touched nothing protected
-tests/                               # 163 tests across all five primitives
+tests/                               # 256 tests across all five primitives, the pipeline, and both new backends
 ```
 
 `records/`, `reports/`, and `outputs/` are regenerated by running the
@@ -526,13 +720,25 @@ pipeline, not committed to the repository.
 
 ## Status
 
-V1 (evidence-sufficiency) and V1.1 (chunk-boundary) are the frozen-scope
-deliverables and are both complete. Everything past that — context-selection,
-answer-abstain, cache-trust — is explicit, approved scope expansion into
-Future Work, not part of the original weekend bar. See
+V1 (evidence-sufficiency) and V1.1 (chunk-boundary) were the original
+frozen-scope deliverables and are complete. Everything past that —
+context-selection, answer-abstain, cache-trust, and now the whole
+v0.2.0 pass (the real pipeline, the CRC calibration layer, a second
+`Decision` backend, and shadow/observe mode) — is explicit, approved
+scope expansion, done because it held up under the same rigor as V1, not
+because scope crept. See
 [What's actually built](#whats-actually-built-and-proven-so-far) for the
 full picture and the [Results](#results) section for what's still open
-(e.g. calibration is real but uneven — that's a finding, not a defect).
+(e.g. calibration is real but uneven, and CRC's own guarantee needed a
+real correction mid-build — both are findings, not defects).
+
+**Still genuinely open:** a memoization pass on context-selection's
+per-round re-filtering (a measured cost, not yet optimized); HotpotQA
+val regeneration to remove a two-provenance disclosure; a
+LangChain/LlamaIndex adapter. (Chunk-boundary's ingestion
+nondeterminism, found by the real pipeline's first run, is now
+diagnosed and mitigated — see [The real pipeline](#the-real-pipeline)
+— with a residual, disclosed flip probability rather than a guarantee.)
 
 **License:** [MIT](LICENSE).
 
