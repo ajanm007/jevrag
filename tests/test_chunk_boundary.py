@@ -73,6 +73,61 @@ def test_decide_document_asks_each_once():
     assert all(r["result"] == "split" for r in records)
 
 
+class AlternatingStub(StubDecision):
+    """Cycles confidences per call — stands in for backend jitter."""
+
+    def __init__(self, confs):
+        super().__init__()
+        self._confs = list(confs)
+        self.calls = 0
+
+    def ask(self, state, questions):
+        conf = self._confs[self.calls % len(self._confs)]
+        self.calls += 1
+        return StubDecision(confidences={q.name: conf
+                                         for q in questions}).ask(state, questions)
+
+
+def _one_cand():
+    return [{"doc_id": "d", "boundary_index": 0,
+             "before": "before", "after": "after"}]
+
+
+def test_decide_document_repeats_averages_jitter():
+    # 0.48/0.52/0.50 straddle the threshold individually; the mean (0.50)
+    # decides split. This is the mechanism that mitigates backend noise.
+    backend = AlternatingStub([0.48, 0.52, 0.50])
+    records, trace = decide_document(_one_cand(), backend, repeats=3)
+    assert backend.calls == 3
+    assert records[0]["confidence"] == pytest.approx((0.48 + 0.52 + 0.50) / 3)
+    assert records[0]["result"] == "split"
+    assert trace[0]["confidences"] == pytest.approx([0.48, 0.52, 0.50])
+    assert trace[0]["n_votes"] == 3
+
+
+def test_decide_document_repeats_sums_cost():
+    backend = AlternatingStub([0.9])
+    records, trace = decide_document(_one_cand(), backend, repeats=3)
+    assert records[0]["latency_ms"] >= 0.0
+    assert records[0]["input_tokens"] == 0
+    assert trace[0]["latency_ms"] == records[0]["latency_ms"]
+
+
+def test_decide_document_default_repeats_is_one_legacy_call():
+    backend = AlternatingStub([0.9])
+    records, trace = decide_document(_one_cand(), backend)
+    assert backend.calls == 1
+    assert records[0]["confidence"] == pytest.approx(0.9)
+    assert trace[0]["confidences"] == pytest.approx([0.9])
+    assert trace[0]["n_votes"] == 1
+
+
+def test_decide_document_repeats_validated():
+    for bad in (0, -2, "3", 2.0):
+        with pytest.raises(ValueError, match="repeats"):
+            decide_document(_one_cand(), StubDecision(), repeats=bad)
+
+
 def test_state_truncates_long_windows():
     state = BoundaryState(before="x" * 5000, after="y" * 5000)
     rendered = state.to_jev_state(max_chars=100)
