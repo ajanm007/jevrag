@@ -35,6 +35,24 @@ classifiers = [
 # widening this pin; fix selective.py instead, then unpin here.
 [project.optional-dependencies]
 test = ["pytest", "rag-jev", "rank-bm25", "pypdf", "numpy==2.3.5"]
+# RAGAS is a real, optional *benchmark* dependency (packet CLINE_24): heavy
+# (pulls the langchain stack) and its faithfulness metric needs live
+# LLM-judge calls, so it is deliberately NOT in `test` — CI installs `.[test]`
+# and must stay fast and key-free. Only scripts/eval_ragas_faithfulness.py
+# imports it, lazily, with a clear error when absent.
+ragas = [
+    "ragas==0.4.3",
+    # ragas 0.4.3 declares the langchain stack UNVERSIONED, but its
+    # ragas/llms/base.py still does `from langchain_community.chat_models.
+    # vertexai import ChatVertexAI` — which the langchain 1.x line
+    # (langchain-community >= 0.4) removed. pip's default resolution therefore
+    # yields a stack where even `import ragas` raises ModuleNotFoundError
+    # (verified 2026-09-22). These pins restore a compatible 0.3-line stack.
+    "langchain<1.0",
+    "langchain-core<1.0",
+    "langchain-community<0.4",
+    "langchain-openai<1.0",
+]
 
 [project.urls]
 Homepage = "https://github.com/ajanm007/jevrag"
