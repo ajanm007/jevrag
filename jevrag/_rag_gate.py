@@ -1,10 +1,9 @@
 """Bridge to code and data this project reuses rather than reimplements.
 
-The risk-coverage/AURC math, the EM/F1 evaluator, and the CRC
-threshold-selection core are vendored directly into ``jevrag/_vendor/``
-(with attribution) — see ``selective()``, ``evaluator()``, and ``crc()``
-below — so the package installs and runs standalone with no external
-checkout required for that part.
+The risk-coverage/AURC math and the EM/F1 evaluator are vendored directly
+into ``jevrag/_vendor/`` (with attribution) — see ``selective()`` and
+``evaluator()`` below — so the package installs and runs standalone with
+no external checkout required for that part.
 
 The HotpotQA dataset itself (the frozen 1000-question val/test split,
 prebuilt BM25/FAISS indices) is a separate, larger dependency that is
@@ -27,7 +26,6 @@ import os
 from pathlib import Path
 from types import ModuleType
 
-from ._vendor import crc as _crc_module
 from ._vendor import evaluator as _evaluator_module
 from ._vendor import selective as _selective_module
 
@@ -59,8 +57,3 @@ def selective() -> ModuleType:
 def evaluator() -> ModuleType:
     """EM/F1 evaluator with SQuAD-style normalization — vendored."""
     return _evaluator_module
-
-
-def crc() -> ModuleType:
-    """CRC threshold selection (Angelopoulos et al. 2022) — vendored."""
-    return _crc_module

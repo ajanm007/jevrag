@@ -32,7 +32,6 @@ from .eval.calibration import (
     threshold_for_coverage,
 )
 from .eval.cost import format_cost_table, summarize_cost
-from .eval.crc import crc_calibrate, crc_readout
 
 REQUIRED_KEYS = {
     "question_id", "question", "gold", "prediction",
@@ -297,8 +296,7 @@ def _print_population_sections(records: list[dict],
                                gen, n_bins: int,
                                tune_records: list[dict] | None = None,
                                coverage_target: float = 0.9,
-                               applied_split: str = "test",
-                               crc_alphas: list[float] | None = None) -> dict:
+                               applied_split: str = "test") -> dict:
     """Accuracy → cost → baseline blocks for ONE provenance-uniform population.
 
     Returns its section dict (nulls when unreportable). Prints nothing for
@@ -311,8 +309,7 @@ def _print_population_sections(records: list[dict],
         "generator": gen,
         "verdict": "reportable" if reportable else f"unreportable: generator is {gen!r}",
         "em_f1": None, "calibration": None, "reliability_bins": None,
-        "risk_coverage": None, "operating_point": None, "crc": None,
-        "baseline": None,
+        "risk_coverage": None, "operating_point": None, "baseline": None,
     }
     if reportable:
         conf, corr = _conf_correct(records)
@@ -329,18 +326,6 @@ def _print_population_sections(records: list[dict],
         if tune_records is not None:
             section["operating_point"] = _tune_operating_point(
                 tune_records, conf, corr, coverage_target, applied_split)
-        if crc_alphas:
-            if tune_records is not None:
-                t_conf, t_corr = _conf_correct(tune_records)
-                section["crc"] = _print_crc_block(
-                    t_conf, t_corr, _record_keys(tune_records),
-                    conf, corr, _record_keys(records), crc_alphas,
-                    in_sample=False)
-            else:
-                keys = _record_keys(records)
-                section["crc"] = _print_crc_block(
-                    conf, corr, keys, conf, corr, keys, crc_alphas,
-                    in_sample=True)
         section.update(em_f1=em_f1, calibration=cal, reliability_bins=bins,
                        risk_coverage={k: v.tolist() for k, v in curve.items()})
 
@@ -416,8 +401,7 @@ def print_report(records: list[dict], baseline_records: list[dict] | None,
                  n_bins: int, out_path: Path | None,
                  tune_records: list[dict] | None = None,
                  coverage_target: float = 0.9,
-                 applied_split: str = "test",
-                 crc_alphas: list[float] | None = None) -> dict:
+                 applied_split: str = "test") -> dict:
     """Assemble and print the full eval report. Returns the report dict.
 
     Single provenance: the original flat report (parity mismatch still raises
@@ -455,7 +439,7 @@ def print_report(records: list[dict], baseline_records: list[dict] | None,
         section = _print_population_sections(
             records, baseline_records, gated_gen, n_bins,
             tune_records=tune_records, coverage_target=coverage_target,
-            applied_split=applied_split, crc_alphas=crc_alphas)
+            applied_split=applied_split)
         report = {"dataset": "hotpotqa", "n_records": len(records),
                   "mode": "single", **section}
     else:
@@ -750,89 +734,6 @@ def load_records_generic(path: Path, required_keys: set) -> list[dict]:
     return records
 
 
-def _record_keys(records: list[dict]) -> list[str]:
-    """Stable per-row tie-break keys for CRC.
-
-    question_id when it is present and unique (every primitive's records carry
-    it). Otherwise the row index — which breaks ties reproducibly within one
-    file but is not a property of the row, and CRC's tie-break needs to be one,
-    or a fresh question could not follow the same rule. The fallback is
-    announced rather than assumed.
-    """
-    ids = [str(r["question_id"]) for r in records if "question_id" in r]
-    if len(ids) == len(records) and len(set(ids)) == len(ids):
-        return ids
-    print("  note: CRC tie-break keys fall back to row indices (records lack a "
-          "unique question_id) — reproducible within this file, not per row "
-          "across files", file=sys.stderr)
-    return [str(i) for i in range(len(records))]
-
-
-def _print_crc_block(
-    cal_conf: np.ndarray,
-    cal_corr: np.ndarray,
-    cal_keys: list,
-    eval_conf: np.ndarray,
-    eval_corr: np.ndarray,
-    eval_keys: list,
-    alphas: list[float],
-    *,
-    in_sample: bool,
-) -> list[dict]:
-    """CRC per-decision thresholds — the error-budget counterpart to the
-    coverage-target operating point. Calibrated on the tune side (val when
-    --tune-records is given), read out on the reported split. With no separate
-    tune records the read-out is in-sample and says so: the bound then holds by
-    construction via the monotone envelope, which proves mechanics, not the
-    guarantee.
-
-    Ties are broken by a deterministic hash of each row's key (see
-    jevrag/eval/crc.py): the threshold is in decision space, so `threshold=`
-    prints the raw confidence of the k-hat-th row while the answer rule is
-    `score + eps*offset(key) >= threshold`. Without that, quantized confidences
-    let the value rule answer whole tie blocks and overshoot k-hat.
-    """
-    print("\n--- CRC thresholds (conformal risk control, B=1) ---")
-    print("  tie policy: deterministic sha256(question_id) tie-break; answer "
-          "iff score + 1e-06*offset(key) >= threshold")
-    if in_sample:
-        print(
-            "  calibrated and read out on the SAME records (no --tune-records):\n"
-            "  in-sample the bound holds by construction — this proves mechanics,\n"
-            "  not the exchangeability guarantee"
-        )
-    rows = []
-    for alpha in alphas:
-        calib = crc_calibrate(cal_conf, cal_corr, alpha, keys=cal_keys)
-        ro = crc_readout(eval_conf, eval_corr, eval_keys, calib["threshold"])
-        holds = bool(ro["risk"] <= alpha) if np.isfinite(ro["risk"]) else None
-        if calib["abstain_all"]:
-            print(
-                f"  alpha={alpha:.3f}: abstain-all (no k satisfies the bound; "
-                f"B/(n+1)={calib['b_correction']:.4f}) -> coverage {ro['coverage']:.4f}"
-            )
-        else:
-            risk_s = f"{ro['risk']:.4f}" if np.isfinite(ro["risk"]) else "nan"
-            print(
-                f"  alpha={alpha:.3f}: threshold={calib['threshold_score']:.4f} "
-                f"(k-hat={calib['k_hat']}/{calib['n_cal']}, "
-                f"answered-cal={calib['n_answered_cal']}, "
-                f"B/(n+1)={calib['b_correction']:.4f}) -> "
-                f"coverage {ro['coverage']:.4f}, selective risk {risk_s} "
-                f"vs alpha (holds: {holds})"
-            )
-        rows.append(
-            {**calib,
-             "eval_coverage": ro["coverage"],
-             "eval_risk": ro["risk"],
-             "eval_n_answered": ro["n_answered"],
-             "guarantee_holds_empirically": holds,
-             "in_sample": in_sample}
-        )
-    return rows
-
-
-
 def _write_report(report: dict, out: str | None) -> None:
     if out:
         out_path = Path(out)
@@ -883,7 +784,7 @@ def cmd_eval_sufficiency(args: argparse.Namespace) -> int:
     report = print_report(records, baseline_records, n_bins=args.bins,
                           out_path=out_path, tune_records=tune_records,
                           coverage_target=args.coverage_target,
-                          applied_split=split, crc_alphas=args.crc_alpha)
+                          applied_split=split)
     # Finding 4: an eval whose accuracy numbers are unreportable is a failed
     # eval. Exit 0 would let a script or CI treat it as success — same spirit
     # as omitting the numbers instead of bannering them.
@@ -923,14 +824,6 @@ def build_parser() -> argparse.ArgumentParser:
     p_suf.add_argument(
         "--coverage-target", type=float, default=0.9,
         help="target coverage for the val-tuned operating threshold (default 0.9)",
-    )
-    p_suf.add_argument(
-        "--crc-alpha", type=float, action="append", default=None,
-        metavar="ALPHA",
-        help="error budget for a CRC-calibrated threshold (repeatable, e.g. "
-             "--crc-alpha 0.1 --crc-alpha 0.2). Calibrated on the tune/val "
-             "records, read out on the reported split; with no --tune-records "
-             "the read-out is in-sample (bound holds by construction)",
     )
     p_suf.add_argument("--out", default=None, help="write the full report JSON here")
     p_suf.set_defaults(func=cmd_eval_sufficiency)
