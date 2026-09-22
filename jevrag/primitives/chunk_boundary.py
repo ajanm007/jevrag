@@ -146,6 +146,7 @@ def decide_document(
     *,
     threshold: float = DEFAULT_SPLIT_THRESHOLD,
     max_chars: int = 2000,
+    repeats: int = 1,
 ) -> tuple[list[dict[str, Any]], list[dict[str, Any]]]:
     """Decide every candidate boundary of one document, independently.
 
@@ -153,7 +154,22 @@ def decide_document(
     ``after``. Each is asked exactly once — no loop, no shared state between
     candidates. Returns (records, trace); the trace holds per-candidate Jev
     latency/tokens and is diagnostic only.
+
+    ``repeats`` (packet 29): ask each candidate that many times and decide
+    on the MEAN confidence. Live diagnosis on a real document showed the
+    backend's own output jittering ~±0.03 call-to-call, with two candidates
+    straddling the 0.5 threshold and flipping labels across runs (3 vs 4
+    splits on identical candidates) — a property of the backend near the
+    threshold, not a construction bug (candidate lists were byte-identical
+    across 7 fresh runs). Averaging attacks exactly that noise; the mean
+    (not a majority vote) keeps continuity so the confidence stays a
+    probability the unchanged harness can read. Default 1 = legacy
+    behavior exactly (standalone evals' cost and numbers comparable).
+    Latency/tokens in records and trace are SUMMED across repeats, so cost
+    accounting stays complete; the trace keeps the per-call list.
     """
+    if not isinstance(repeats, int) or repeats < 1:
+        raise ValueError(f"repeats must be a positive int, got {repeats!r}.")
     ask_question = boundary_question()
     records, trace = [], []
     wall_start = time.perf_counter()
@@ -162,18 +178,27 @@ def decide_document(
             before=cand["before"], after=cand["after"],
             doc_id=str(cand.get("doc_id", "")),
             boundary_index=int(cand.get("boundary_index", 0)))
-        result: DecisionResult = decision.ask(
-            state.to_jev_state(max_chars=max_chars), [ask_question])
-        conf = float(result.confidence)
+        confs: list[float] = []
+        latency = 0.0
+        tokens = 0
+        for _ in range(repeats):
+            result: DecisionResult = decision.ask(
+                state.to_jev_state(max_chars=max_chars), [ask_question])
+            confs.append(float(result.confidence))
+            latency += float(result.metadata.get("latency_ms", 0.0))
+            tokens += int(result.metadata.get("input_tokens", 0))
+        conf = sum(confs) / len(confs)
         records.append(make_boundary_record(
             doc_id=state.doc_id, boundary_index=state.boundary_index,
             result=label_for(conf, threshold), confidence=conf,
-            latency_ms=float(result.metadata.get("latency_ms", 0.0)),
-            input_tokens=int(result.metadata.get("input_tokens", 0))))
+            latency_ms=latency, input_tokens=tokens))
+        # Per-call confidences + vote count ride the trace (diagnostic only
+        # — records keep the agreed one-shot shape).
+        trace.append({"boundary_index": state.boundary_index,
+                      "confidence": conf,
+                      "confidences": list(confs),
+                      "n_votes": repeats,
+                      "latency_ms": latency,
+                      "input_tokens": tokens})
     wall_ms = (time.perf_counter() - wall_start) * 1000.0
-    for rec in records:
-        trace.append({"boundary_index": rec["boundary_index"],
-                      "confidence": rec["confidence"],
-                      "latency_ms": rec["latency_ms"],
-                      "input_tokens": rec["input_tokens"]})
     return records, [{"wall_ms": wall_ms, "n": len(records), **t} for t in trace]
