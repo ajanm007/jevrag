@@ -1,5 +1,15 @@
 """Eval: RAGAS faithfulness as the third abstention-gate signal (CLINE_24).
 
+SECURITY (disclosed 2026-09-24): the pinned ragas==0.4.3 has an unpatched
+SSRF in its multi-modal faithfulness collections module
+(_try_process_local_file/_try_process_url following attacker-controlled
+URLs/paths from `retrieved_contexts`). No patched ragas version exists yet;
+the vendor did not respond to disclosure. This script passes retrieved
+evidence text as `retrieved_contexts` (below) — safe here because that
+evidence comes from a fixed local benchmark dataset (HotpotQA), but do NOT
+repurpose this script to score live/externally-sourced retrieval content
+until ragas ships a fix. See the `[ragas]` extra's comment in pyproject.toml.
+
 Three abstention-gate signals, ONE shared ground truth, ONE shared metric:
 
     jev      answer-abstain's own confidence (already in the records)

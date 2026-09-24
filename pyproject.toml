@@ -4,7 +4,7 @@ build-backend = "setuptools.build_meta"
 
 [project]
 name = "jevrag"
-version = "0.2.0"
+version = "0.2.1"
 description = "A decision-native RAG controller: state -> Decision -> confidence -> action"
 readme = "README.md"
 license = "MIT"
@@ -41,6 +41,16 @@ test = ["pytest", "rag-jev", "rank-bm25", "pypdf", "numpy==2.3.5"]
 # and must stay fast and key-free. Only scripts/eval_ragas_faithfulness.py
 # imports it, lazily, with a clear error when absent.
 ragas = [
+    # SECURITY: ragas <= 0.4.3 (every version in the 0.2.3-0.4.3 range,
+    # which includes this pin) has an unpatched SSRF: _try_process_local_file/
+    # _try_process_url in ragas/metrics/collections/multi_modal_faithfulness/
+    # util.py will follow attacker-controlled URLs/paths from a
+    # `retrieved_contexts` argument. No patched release exists as of
+    # 2026-09-24; the vendor was notified and did not respond. This extra is
+    # never installed by default or in CI (see the comment above), but if you
+    # install it yourself, do not pass untrusted/externally-sourced text as
+    # `retrieved_contexts` to ragas's Faithfulness metric until a patched
+    # version ships. Track upstream before bumping this pin.
     "ragas==0.4.3",
     # ragas 0.4.3 declares the langchain stack UNVERSIONED, but its
     # ragas/llms/base.py still does `from langchain_community.chat_models.

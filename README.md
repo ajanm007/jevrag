@@ -421,6 +421,18 @@ not signal-limited** — RAGAS's ranking depends more on the judge model than
 on its mechanism. Reusable script: `scripts/eval_ragas_faithfulness.py`
 (needs the `ragas` extra and live judge calls).
 
+**Security disclosure (2026-09-24):** the pinned `ragas==0.4.3` — every
+version in the `ragas` extra's supported range — has an unpatched SSRF in
+its multi-modal faithfulness collections module (attacker-controlled
+`retrieved_contexts` can force the library to fetch arbitrary URLs/local
+paths). No patched release exists yet; the vendor did not respond to
+disclosure. The `ragas` extra is never installed by default or in CI, and
+this project's own use of it only scores a fixed local benchmark dataset —
+but if you install `jevrag[ragas]` yourself, do not pass untrusted or
+externally-sourced text as `retrieved_contexts` until a fix ships. See the
+`[ragas]` extra's comment in `pyproject.toml` for the exact vulnerable
+functions.
+
 ### cache-trust — extracted from real prior art, independently corroborated
 
 Real, shipped prior art exists for this decision (a cache-safety gate
