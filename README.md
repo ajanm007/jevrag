@@ -8,6 +8,15 @@ state → Decision → confidence → action
 
 ![Python 3.11+](https://img.shields.io/badge/python-3.11%2B-blue) ![Tests](https://github.com/ajanm007/jevrag/actions/workflows/tests.yml/badge.svg) ![Status](https://img.shields.io/badge/status-v0.2.0%20in%20progress-informational)
 
+```bash
+pip install jevrag
+# or with uv:
+uv add jevrag              # in a uv project
+uvx jevrag --help          # run the CLI once, no install
+```
+
+See [Quickstart](#quickstart) for keys and a first run.
+
 | Decision | Shape | Status |
 |---|---|---|
 | [evidence-sufficiency](#evidence-sufficiency-n700-test-questions--the-headline-result) | iterative, multi-round | ✅ Built · evaluated (val n=300, test n=700) |
