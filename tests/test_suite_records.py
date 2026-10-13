@@ -292,6 +292,9 @@ def test_twowiki_license_states_what_was_and_was_not_verified():
     assert prov["hf_file"] == "dev.parquet"
     assert prov["hf_file_bytes"] == 30_056_098
     assert "test labels are withheld" in prov["split_note"]
+
+
+def test_rejects_bad_pool_mode():
     rows = [good_row(i) for i in range(4)]
     header = good_header()
     header["pool_mode"] = "hybrid"
@@ -303,6 +306,14 @@ def test_rejects_duplicate_ids():
     """A duplicate WITHIN one half: same id twice, both calibrate. Disjointness
     is unaffected, so this reaches the duplicate check."""
     rows = [good_row(i) for i in range(4)]
+    rows[2]["id"] = rows[0]["id"]   # q0 twice, both calibrate
+    rows[2]["split"] = CP.SPLIT_CALIBRATE
+    rows[3]["split"] = CP.SPLIT_CALIBRATE
+    header = good_header(n_cal=3, n_rep=1)
+    with pytest.raises(ValueError, match="duplicate"):
+        CP.validate_suite_records(rows, header)
+
+
 # --- item 7: the pre-resolution-rows defect, closed structurally ---
 # This exact mistake shipped a 500-row file with empty gold ids in Notebook 0,
 # and was re-made by the B6 and B7 build scripts. Three times is structural,
@@ -402,15 +413,6 @@ def _toy_raw(i):
     return rec, paras
 
 
-# PLACEHOLDER_TWOWIKI
-    rows[2]["id"] = rows[0]["id"]   # q0 twice, both calibrate
-    rows[2]["split"] = CP.SPLIT_CALIBRATE
-    rows[3]["split"] = CP.SPLIT_CALIBRATE
-    header = good_header(n_cal=3, n_rep=1)
-    with pytest.raises(ValueError, match="duplicate"):
-        CP.validate_suite_records(rows, header)
-
-
 def test_rejects_missing_row_field():
     rows = [good_row(i) for i in range(4)]
     del rows[1]["answer"]
@@ -426,7 +428,3 @@ def test_failed_validation_writes_nothing(tmp_path):
     with pytest.raises(ValueError):
         CP.write_suite_records(p, rows, good_header())
     assert not p.exists()
-
-
-# PLACEHOLDER_TWOWIKI
-# PLACEHOLDER_REJECTS

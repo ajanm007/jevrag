@@ -103,13 +103,6 @@ def test_stratification_follows_hops():
     assert hops.count(2) == 10 and hops.count(4) == 10
 
 
-def test_rare_stratum_is_not_rounded_away():
-    # 1 four-hop row among 39 two-hop rows: largest-remainder must keep it.
-    data = rows(39, hops=2)
-    rare, paras = make_row("4hop__0001_x", hops=4, n_para=3)
-    rare["_paragraphs"] = paras
-    rare["_supporting_local"] = [0]
-    data.append(rare)
 # --- split: disjoint, sized, stratified ---
 
 def test_split_is_250_250_by_default():

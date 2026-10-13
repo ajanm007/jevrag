@@ -166,6 +166,9 @@ def test_answerable_only_false_keeps_empty_gold_rows(tmp_path):
 def test_rows_without_a_question_are_dropped(tmp_path):
     p = tmp_path / "m.jsonl"
     p.write_text(json.dumps(dict(RAW_ROW, question="")) + "\n", encoding="utf-8")
+    assert load_musique(p) == []
+
+
 # --- gold-paragraph mapping: the part that must not silently drift ---
 
 def test_supporting_local_indices_point_at_the_is_supporting_rows(jsonl_file):
@@ -259,6 +262,3 @@ def test_missing_id_gets_a_synthesized_stable_one(tmp_path):
     p = tmp_path / "m.jsonl"
     p.write_text(json.dumps(row) + "\n", encoding="utf-8")
     assert load_musique(p)[0]["id"] == "musique:0"
-
-
-# PLACEHOLDER_MORE

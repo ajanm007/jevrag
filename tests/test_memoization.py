@@ -167,8 +167,8 @@ def test_selection_trace_rows_show_hits_vs_live_calls():
     assert all(r["n_cache_hits"] == r["n_judged"] > 0 for r in later_rows)
     for r in rows:
         assert r["jev_calls"] == r["n_live_calls"] == r["n_judged"] - r["n_cache_hits"]
-        # Overlap proof: later rounds judge zero chunks not seen before.
-        assert r["n_judged"] == r["pool_n"] or r["n_judged"] < r["pool_n"]
+    # Overlap proof: later rounds judge zero chunks not seen before.
+    assert all(r["new_candidates"] == [] for r in later_rows)
 
 
 def test_memo_off_trace_shape_has_no_cache_keys():
