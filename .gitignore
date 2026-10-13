@@ -16,6 +16,8 @@ venv/
 # Eval artifacts — regenerate, don't commit
 outputs/
 results/
+# ...except the small generated tables that back the README (aggregates only)
+!docs/results/
 records/
 reports/
 *.log

@@ -1,8 +1,8 @@
 """README-table aggregator (packet V03-A6, readout fix V03-A11): result files
 -> markdown rows.
 
-Reads one or more ``*_suite_results.jsonl`` files (header + rows, per
-``tempnotes/SUITE_RECORDS_CONTRACT.md``) and emits the markdown rows for the
+Reads one or more result files written by ``scripts/run_suite.py`` (header +
+rows, per ``docs/suite_records_contract.md``) and emits the markdown rows for the
 README "Results at a glance" table: gated vs fixed vs CRC, both CRC risk
 numbers, cost. Metrics are recomputed from the rows with
 ``run_suite.split_metrics`` (single source of truth) — EXCEPT the gated_crc

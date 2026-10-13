@@ -1,9 +1,9 @@
 """Generic closed-pool suite runner (packet V03-A6, tracker item I-5 core).
 
 Reads one ``<dataset>_suite_records.jsonl`` per
-``tempnotes/SUITE_RECORDS_CONTRACT.md`` (header + question rows; the Cline
-seat produces those files in parallel — this runner codes to the contract,
-tested against a fixture, and does not import their loader modules).
+``docs/suite_records_contract.md`` (header + question rows). The runner codes
+to the contract, is tested against a fixture, and does not import the loader
+modules.
 
 Modes: ``per_question`` (a BM25 over that question's own paragraphs) and
 ``shared`` (one pool file, one index across questions). Arms: ``gated``,
