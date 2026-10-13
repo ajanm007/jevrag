@@ -33,8 +33,8 @@ CLOSURE = [
 ]
 
 
-def stage_clean_room(tmp_path: Path) -> Path:
-    """Build the scrubbed layout; return its root."""
+def stage_code(tmp_path: Path) -> Path:
+    """Code-only clean room: jevrag/, pyproject.toml and the script closure."""
     room = tmp_path / "cleanroom"
     shutil.copytree(REPO_ROOT / "jevrag", room / "jevrag",
                     ignore=shutil.ignore_patterns("__pycache__"))
@@ -43,8 +43,15 @@ def stage_clean_room(tmp_path: Path) -> Path:
         dest = room / rel
         dest.parent.mkdir(parents=True, exist_ok=True)
         shutil.copy(REPO_ROOT / rel, dest)
+    return room
+
+
+def stage_clean_room(tmp_path: Path) -> Path:
+    """Code-only room plus the data fixtures the stub end-to-end run needs."""
+    room = stage_code(tmp_path)
     # Fixture inputs (A6 smoke records + pool), header pool_file rewritten.
     # outputs/ is gitignored, so a fresh checkout (CI) has no fixtures: skip.
+    # Only the stub run needs them; the --help check is code-only.
     records_src = REPO_ROOT / "outputs" / "v03_a6_hotpotqa_records.jsonl"
     if not records_src.exists():
         pytest.skip(f"fixture records not present: {records_src.name}")
@@ -82,7 +89,7 @@ def scrubbed_env(room: Path) -> dict:
 
 
 def test_clean_room_help(tmp_path):
-    room = stage_clean_room(tmp_path)
+    room = stage_code(tmp_path)
     proc = subprocess.run(
         [sys.executable, str(room / "scripts" / "run_suite.py"), "--help"],
         capture_output=True, text=True, cwd=str(room),
