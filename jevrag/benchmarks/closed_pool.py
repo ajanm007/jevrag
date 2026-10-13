@@ -122,7 +122,6 @@ def make_question(*, id: str, question: str, answer: str,
                           split=split, supporting_ids=list(supporting_ids))
 
 
-# PLACEHOLDER_SAMPLER
 def stratify_key(record: dict[str, Any]) -> str:
     """Stratification bucket for one question.
 
@@ -693,27 +692,6 @@ def make_pool_retrieve_fn(bm25_index, pool: Sequence[dict[str, Any]],
     return retrieve_fn
 
 
-# PLACEHOLDER_SANITY
-    report = sorted((dict(r) for r in sample
-                     if str(r.get("id", "")) not in cal_ids),
-                    key=lambda r: str(r.get("id", "")))
-
-    for r in calibrate:
-        r["split"] = SPLIT_CALIBRATE
-    for r in report:
-        r["split"] = SPLIT_REPORT
-
-    header = {
-        "split_seed": seed + 1,
-        "n_calibrate": len(calibrate),
-        "n_report": len(report),
-        "requested_calibrate": n_calibrate,
-        "requested_report": n_report,
-        "disjoint": not (cal_ids & {str(r.get("id", "")) for r in report}),
-    }
-    return calibrate, report, header
-
-
 #: Keys that mark a record as still carrying private, pre-resolution state.
 #: A row carrying any of these has NOT been through resolve_supporting_ids.
 PRE_RESOLUTION_KEYS = ("_paragraphs", "_supporting_local")
@@ -769,9 +747,6 @@ def _finalize_suite_rows(rows: Sequence[dict[str, Any]],
     validate_suite_records(rows, header, pool)
     return list(rows)
 
-
-
-# PLACEHOLDER_POOL
 
 
 def validate_suite_records(rows: Sequence[dict[str, Any]],

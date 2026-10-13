@@ -99,7 +99,6 @@ def _loads(value: Any, what: str) -> Any:
     return value
 
 
-# PLACEHOLDER_PARSE
 def _paragraphs(context: Any) -> list[dict[str, Any]]:
     """context -> [{title, text}] in file order.
 

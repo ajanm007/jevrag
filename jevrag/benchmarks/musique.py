@@ -156,7 +156,6 @@ def _paragraphs(row: dict[str, Any]) -> list[dict[str, Any]]:
     return out
 
 
-# PLACEHOLDER_LOAD
 def load_musique(path: str | Path, *, answerable_only: bool = True
                  ) -> list[dict[str, Any]]:
     """Load MuSiQue rows as common question records with attached paragraphs.

@@ -243,5 +243,3 @@ def provenance(root: str | Path | None = None) -> dict[str, Any]:
         else:
             out[f"{key}_error"] = f"{path} not found"
     return out
-
-# PLACEHOLDER_LOAD
