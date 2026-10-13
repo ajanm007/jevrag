@@ -7,7 +7,7 @@ backend wired up; the abstraction itself is the point, not any one
 decision or backend. See README.md for what's built and evaluated.
 """
 
-__version__ = "0.1.0"
+__version__ = "0.3.0"
 
 from jevrag.decision import (
     JEV_MODEL_DEFAULT,
