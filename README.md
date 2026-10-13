@@ -329,7 +329,13 @@ deliberately narrow, and its limits are part of the result:
     counts depend on the tie-break convention; no answered question was wrong
     either way. Unifying the keys is a later release.
   - The shared HotpotQA pool file carries a header row that the suite runner's
-    loader rejects; the Kaggle notebook strips it before the run.
+    loader rejects, and a relative `pool_file` in the records header resolves
+    against the working directory; the Kaggle notebook strips the header and
+    passes an explicit path. Fixed in the next release, not this one, so the
+    code in this tree is exactly the code that produced the reported numbers.
+  - Resuming a suite run treats a row that recorded a transient error as
+    finished, so it is not retried. None of the three result files contains an
+    error row, so no reported number is affected.
   - Closed pools and the truncated report halves above limit how far these numbers
     generalize; they are not open-domain results.
 
@@ -486,7 +492,8 @@ was frozen before running the eval and was not retuned to make that
 number look better. *(Those figures are the original n=30 run; the
 n=300 re-run in [Results at a glance](#results-at-a-glance) puts this
 backend at AURC 0.3310, ECE 0.4877, Brier skill −0.8764 — worse
-calibration, but also no longer ahead of Jev on ranking.)*
+calibration, but nominally ahead of Jev on ranking (AURC 0.3310 vs
+0.3498; not significant, p=0.493).)*
 
 Every primitive now has a real, zero-cost baseline available to compare
 Jev against.
