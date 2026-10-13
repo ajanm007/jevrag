@@ -44,9 +44,12 @@ def stage_clean_room(tmp_path: Path) -> Path:
         dest.parent.mkdir(parents=True, exist_ok=True)
         shutil.copy(REPO_ROOT / rel, dest)
     # Fixture inputs (A6 smoke records + pool), header pool_file rewritten.
+    # outputs/ is gitignored, so a fresh checkout (CI) has no fixtures: skip.
+    records_src = REPO_ROOT / "outputs" / "v03_a6_hotpotqa_records.jsonl"
+    if not records_src.exists():
+        pytest.skip(f"fixture records not present: {records_src.name}")
     recs = [json.loads(l) for l in
-            open(REPO_ROOT / "outputs" / "v03_a6_hotpotqa_records.jsonl",
-                 encoding="utf-8") if l.strip()]
+            open(records_src, encoding="utf-8") if l.strip()]
     header, rows = recs[0]["__header__"], recs[1:]
     # The fixture header's pool_file is a machine-specific absolute path
     # (written on WSL). Resolve the pool from this checkout's outputs/ by
