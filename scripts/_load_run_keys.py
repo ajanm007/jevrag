@@ -1,14 +1,19 @@
-"""Key loading for live runs. Used only by scripts/produce_records.py.
+"""Key loading for live runs.
 
-Rules:
-- Both keys are read from the repo's own .env file (gitignored, resolved
-  relative to this script so it works regardless of where the repo is
-  cloned). It is the single source of truth: rotate there.
-- Keys are returned, never logged. Nothing in this module prints a key.
+Rules (packet V03-A8; Kaggle-safe):
+- An environment variable of the same name wins when set and non-empty
+  (after strip). On Kaggle the notebook sets keys in-process and must NOT
+  write a .env (the working directory is saved with notebook output and
+  could leak keys).
+- Otherwise the repo's own .env file (gitignored, resolved relative to this
+  script) is read exactly as before — the fallback behaviour is unchanged.
+- Keys are returned, never logged. Nothing in this module prints a key, and
+  no exception message or repr contains one.
 """
 
 from __future__ import annotations
 
+import os
 from pathlib import Path
 
 JEVRAG_ENV = Path(__file__).resolve().parent.parent / ".env"
@@ -30,9 +35,17 @@ def _read_key(env_path: Path, name: str) -> str:
     raise KeyError(f"{name} not found in {env_path}")
 
 
+def _load_key(name: str) -> str:
+    """Environment variable first, .env fallback (both stripped)."""
+    from_env = os.environ.get(name, "")
+    if isinstance(from_env, str) and from_env.strip():
+        return from_env.strip()
+    return _read_key(JEVRAG_ENV, name)
+
+
 def load_jev_key() -> str:
-    return _read_key(JEVRAG_ENV, "JEV_API_KEY")
+    return _load_key("JEV_API_KEY")
 
 
 def load_openrouter_key() -> str:
-    return _read_key(JEVRAG_ENV, "OPENROUTER_API_KEY")
+    return _load_key("OPENROUTER_API_KEY")

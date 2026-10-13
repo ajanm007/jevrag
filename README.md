@@ -6,21 +6,33 @@
 state → Decision → confidence → action
 ```
 
-![Python 3.11+](https://img.shields.io/badge/python-3.11%2B-blue) ![Tests](https://github.com/ajanm007/jevrag/actions/workflows/tests.yml/badge.svg) ![Status](https://img.shields.io/badge/status-v0.2.0%20in%20progress-informational)
+![Python 3.11+](https://img.shields.io/badge/python-3.11%2B-blue) ![Tests](https://github.com/ajanm007/jevrag/actions/workflows/tests.yml/badge.svg) ![Version](https://img.shields.io/badge/version-v0.3.0-blue)
+
+```bash
+pip install jevrag
+# or with uv:
+uv add jevrag              # in a uv project
+uvx jevrag --help          # run the CLI once, no install
+```
+
+See [Quickstart](#quickstart) for keys and a first run.
 
 | Decision | Shape | Status |
 |---|---|---|
-| [evidence-sufficiency](#evidence-sufficiency-n700-test-questions--the-headline-result) | iterative, multi-round | ✅ Built · evaluated (val n=300, test n=700) |
-| [chunk-boundary](#chunk-boundary--the-generalization-test) | one-shot, pre-retrieval | ✅ Built · evaluated · generalization hash-proven |
-| [context-selection](#context-selection--wrapped-vs-rebuilt-on-two-real-benchmarks) | one-shot, per-passage | ✅ Wrap + from-scratch rebuild, both evaluated |
-| [answer-abstain](#answer-abstain--a-post-generation-grounding-check-benchmarked-against-a-free-alternative) | one-shot, post-generation | ✅ Built · benchmarked against a free alternative |
-| [cache-trust](#cache-trust--extracted-from-real-prior-art-independently-corroborated) | one-shot, structural state | ✅ Extracted · independently corroborated |
+| [evidence-sufficiency](docs/primitives.md#evidence-sufficiency-n700-test-questions--the-headline-result) | iterative, multi-round | ✅ Built · evaluated (val n=300, test n=700) |
+| [chunk-boundary](docs/primitives.md#chunk-boundary--the-generalization-test) | one-shot, pre-retrieval | ✅ Built · evaluated · generalization hash-proven |
+| [context-selection](docs/primitives.md#context-selection--wrapped-vs-rebuilt-on-two-real-benchmarks) | one-shot, per-passage | ✅ Wrap + from-scratch rebuild, both evaluated |
+| [answer-abstain](docs/primitives.md#answer-abstain--a-post-generation-grounding-check-benchmarked-against-a-free-alternative) | one-shot, post-generation | ✅ Built · benchmarked against a free alternative (n=300, tie) |
+| [cache-trust](docs/primitives.md#cache-trust--extracted-from-real-prior-art-independently-corroborated) | one-shot, structural state | ✅ Extracted · independently corroborated |
 | [the real pipeline](#the-real-pipeline) | all five, chained | ✅ Live · two real end-to-end runs, CRC-opt-in verified |
 | [CRC calibration layer](#the-crc-calibration-layer) | per-decision threshold | ✅ Built · one real bug found, fixed, and disclosed |
 | [a second Decision backend](#a-second-decision-backend) | logprob, zero-cost | ✅ Built · proves the abstraction generalizes to backends too |
-| [shadow / observe mode](#shadow-observe-mode) | challenger comparison | ✅ Built · real what-if run against production |
+| [shadow / observe mode](#shadow--observe-mode) | challenger comparison | ✅ Built · real what-if run against production |
 
-**Jump to:** [The idea](#the-idea) · [Quickstart](#quickstart) · [What's built](#whats-actually-built-and-proven-so-far) · [Full CLI](#the-full-cli-all-five-primitives) · [Results](#results) · [The real pipeline](#the-real-pipeline) · [Reproducing this](#reproducing-this) · [Project layout](#project-layout)
+Per-primitive results and caveats live in [docs/primitives.md](docs/primitives.md);
+the summary table is [Results at a glance](#results-at-a-glance).
+
+**Jump to:** [The idea](#the-idea) · [Quickstart](#quickstart) · [What's built](#whats-actually-built-and-proven-so-far) · [Full CLI](#the-full-cli-all-five-primitives) · [Results at a glance](#results-at-a-glance) · [The real pipeline](#the-real-pipeline) · [Reproducing this](#reproducing-this) · [Project layout](#project-layout) · [Per-primitive detail](docs/primitives.md)
 
 ---
 
@@ -236,7 +248,7 @@ Concretely, what exists:
 - **A shadow/observe wrapper** (`jevrag/backends/shadow.py`) — run a
   challenger policy alongside a real one without ever affecting the
   real result, logged to a JSONL ledger. See
-  [Shadow / observe mode](#shadow-observe-mode).
+  [Shadow / observe mode](#shadow--observe-mode).
 
 ---
 
@@ -265,201 +277,96 @@ shape in its module docstring.
 
 ## Results
 
-### evidence-sufficiency (n=700 test questions) — the headline result
+### Results at a glance
 
-**The gate matches baseline accuracy while retrieving 38.5% less — and that
-claim was actually tested, not just eyeballed.**
+Every number below is traceable to a raw run output or a report in `tempnotes/`.
+Full per-primitive write-ups — caveats, failure modes, and what each result does
+*not* claim — are in [docs/primitives.md](docs/primitives.md). AURC is
+lower-is-better throughout.
 
-| | Gated (sufficiency) | Baseline (always 3 rounds) | Difference |
+| Decision | Headline result | Calibration | Verdict |
 |---|---|---|---|
-| Exact match | 0.4129 | 0.4057 | +0.0071 (not statistically significant) |
-| F1 | 0.5398 | 0.5304 | +0.0094 |
-| Total retrieval rounds | 1291 | 2100 | **−38.5%** |
+| [evidence-sufficiency](docs/primitives.md#evidence-sufficiency-n700-test-questions--the-headline-result) | EM **0.4129** gated vs 0.4057 baseline (p=0.36 McNemar, n.s.); retrieval rounds **−38.5%** | ECE 0.3322 | **Tie on accuracy at −38.5% retrieval.** The real result |
+| [chunk-boundary](docs/primitives.md#chunk-boundary--the-generalization-test) | Wikipedia AURC **0.2798** vs cosine 0.2894 | ECE 0.087 | **Tie** on ranking; calibration far better than sufficiency |
+| [context-selection](docs/primitives.md#context-selection--wrapped-vs-rebuilt-on-two-real-benchmarks) | HotpotQA AURC **0.5412** vs 0.5550 (p=0.038); SciFact NDCG@10 0.7479 vs 0.7390 (p=0.234, n.s.) | ECE 0.1542 | **Small real edge on HotpotQA only** — does not hold on SciFact |
+| [answer-abstain](docs/primitives.md#answer-abstain--a-post-generation-grounding-check-benchmarked-against-a-free-alternative) | **n=300:** AURC **0.3498** (Jev) vs **0.3310** (logprob), p=0.493 | ECE **0.258** vs 0.488; Brier skill −0.05 vs −0.88 | **Tie — and the free signal is nominally ahead.** Jev is better calibrated than logprob on ECE (though its Brier skill is still slightly negative in absolute terms); passed-subset EM 0.583 vs 0.456 |
+| [cache-trust](docs/primitives.md#cache-trust--extracted-from-real-prior-art-independently-corroborated) | easy AURC **0.146**; hard AURC **0.043** vs oracle 0.041 | Brier skill +0.96 (easy) | **Near-oracle in the hard region**; every error ran safe |
+| [pipeline memoization](#the-real-pipeline) *(new in v0.3)* | selection calls **−62.5%**, dollars **−35%**, outcomes identical — one document, best case | n/a | **Works; measured on one 7-question document, not a benchmark** |
+| Three-dataset suite (HotpotQA, MuSiQue, 2WikiMultihopQA; gated vs fixed-round, report half) | Wrong when answered: HotpotQA **47.8% vs 59.2%** (n=98), MuSiQue **47.1% vs 65.8%** (n=111), 2Wiki **29.7% vs 34.0%** (n=150); EM within two questions of fixed on all three; retrieval rounds **−40% / −22% / −30%**; Jev dollars **−29% / −2% / +11%** | Gated ECE 0.33 / 0.27 / 0.26; AURC 0.49 / 0.38 / 0.19 | **The gate filters wrong answers and saves rounds on all three datasets, but saves money only on HotpotQA.** HotpotQA and MuSiQue report halves are truncated (see below) |
+| CRC calibration (α = 0.3; calibrate half → report half) | HotpotQA: answered **9/98**, 5 wrong (marginal risk 0.051); MuSiQue: answered **0/111**; 2Wiki: answered **141/150**, conditional risk 0.326, marginal risk **0.307** | CRC-arm ECE 0.33 / 0.28 / 0.26 | **The marginal-risk target is met, or within sampling noise on 2Wiki, but on HotpotQA and MuSiQue only by almost never answering.** Jev confidence is too poorly calibrated there for a 30% target at useful coverage |
+| Shift test (rule calibrated on one dataset, applied to others' report halves) | HotpotQA-calibrated rule (answer-abstain threshold 0.98) on MuSiQue / 2Wiki: answered **3/111 and 12/150, none wrong**. Reverse, 2Wiki-calibrated (threshold 0.09) on HotpotQA / MuSiQue: answered 93% / 94%, **59% / 63% wrong** against a 30% target | n/a | **A rule calibrated on the hard dataset transfers safely but answers almost nothing; a rule calibrated on the easy one does not survive the shift.** Single-source shift (difficulty more than task type) |
 
-The rounds reduction is a direct count — the gate simply makes fewer
-retrieval calls, no statistics needed to know that's true. The small accuracy
-edge is a different kind of claim, and it was checked with a paired
-statistical test (McNemar's test, the standard test for comparing two methods
-on the same set of questions): on the 19 questions where the two methods
-actually disagreed, the result was **not statistically significant**
-(p = 0.36). At this sample size, a handful of disagreeing questions isn't
-enough to say the gate is genuinely more accurate rather than just tied.
+**What the v0.3 suite is, and is not.** It measures how the evidence-sufficiency
+gate and the CRC calibration layer behave across three multi-hop datasets. It is
+deliberately narrow, and its limits are part of the result:
 
-So the number actually being claimed is: **equal accuracy, for over a third
-less retrieval work.** That's still a real, useful result — it's exactly what
-a good stopping decision should do — but it's reported as what the data
-supports, not rounded up to "the gate wins."
+- **Closed pools.** Each dataset's retrieval pool is built from the paragraphs of
+  its own sampled questions (a shared pool for HotpotQA, per-question pools for
+  MuSiQue and 2Wiki). This is not open-domain retrieval; absolute accuracy is not
+  comparable to open-domain systems or across datasets.
+- **No chunk-boundary ingestion.** The suite does not exercise the chunk-boundary
+  decision. DocBench accuracy elsewhere in this README is retrieval-limited.
+- **Sample.** Each dataset uses the first 150 calibrate and the first 150 report
+  questions of a frozen, seeded 500-question draw (down from the planned 500 to fit
+  a $5 monthly credit). All three calibrate halves are complete at n=150. The
+  HotpotQA and MuSiQue runs were halted by the generator account running out of
+  credits (the runner fails closed, so every kept row is clean), so their report
+  halves are **n=98 and n=111**; 2Wiki is complete at n=150. Report-half questions
+  are the first N in file order, which is not a random subset. Intervals are wide,
+  and the same 50 questions re-run gave results a question or two apart; differences
+  of a few points are not findings. The first 50 questions of a split are
+  unrepresentative (the 2Wiki gate answered 12 of the first 50 but 80 of the next
+  100), which is why early 50-question checkpoints are not reported.
+- **Shift test.** A single-source shift (calibrate on HotpotQA) across closed-pool
+  multi-hop datasets: a shift in difficulty more than in task type.
+- **Known limitations.**
+  - The CRC tie-break is keyed by question text at deploy time and by question id
+    at calibration time, and recorded CRC-arm confidences already carry the
+    deploy-time shift. The CRC rows above are therefore read as the arm's live
+    decision (answered iff the recorded confidence is at or above the recorded
+    threshold), not through the id-keyed readout used for the gated arm. At tied
+    confidences (they are quantized to two decimals) the shift-test answered
+    counts depend on the tie-break convention; no answered question was wrong
+    either way. Unifying the keys is a later release.
+  - The shared HotpotQA pool file carries a header row that the suite runner's
+    loader rejects, and a relative `pool_file` in the records header resolves
+    against the working directory; the Kaggle notebook strips the header and
+    passes an explicit path. Fixed in the next release, not this one, so the
+    code in this tree is exactly the code that produced the reported numbers.
+  - Resuming a suite run treats a row that recorded a transient error as
+    finished, so it is not retried. None of the three result files contains an
+    error row, so no reported number is affected.
+  - Closed pools and the truncated report halves above limit how far these numbers
+    generalize; they are not open-domain results.
 
-**Is the model's stated confidence trustworthy?** Not fully, and this was
-measured rather than assumed. The confidence Jev returns *ranks* good
-evidence above bad evidence reasonably well (its AURC of 0.4470 sits well
-between a perfect signal's 0.1724 and a useless signal's 0.5871). But its
-absolute numbers are not well calibrated: on average, a stated confidence is
-off by about 33 percentage points from the actual accuracy at that confidence
-level (ECE = 0.3322), and it does *worse* than a naive constant guess by one
-standard measure (Brier skill = −0.4486). The clearest example: on 354 of the
-700 questions — half the dataset — the model reported roughly 95% confidence,
-and was right only 53% of the time. So the model is often very sure of
-itself, and wrong nearly half the time when it is. This kind of finding is
-exactly what a calibration harness is for: catching a confidence signal that
-sounds trustworthy but isn't, rather than repeating a vendor's claim.
+**Not in v0.3, planned for v0.4:** NQ and TriviaQA with a real open-domain index;
+the full 250 / 250 split on every dataset (the runner resumes, so only the missing
+rows need re-running); `crc_conditional`; LangChain and LlamaIndex adapters;
+RAGTruth and CRAG; chunk-boundary in the suite; DocBench past five documents;
+HotpotQA validation regeneration; selection-cache persistence; and a logprob-based
+answer-abstain backend from another model provider as a further comparison.
 
-**Does a threshold picked on one dataset transfer to another?** Tuning the
-gate's cutoff to hit 90% coverage on the validation set and applying it
-unchanged to the test set carries over reasonably well on coverage (90.3% to
-91.3%) but loses about 5.6 points of accuracy in the process (49.5% to
-43.8%). Thresholds tuned in one place don't always hold up somewhere else —
-this is a known, general finding in this kind of work, and it holds here too.
+**The answer-abstain row is the one that moved under more data, and it did not
+move in Jev's favour.** At n=30 Jev led on AURC by 0.0080 (p=0.879). At n=210
+the sign flipped — Jev 0.0199 *behind* (p=0.567) — and at n=300 it is 0.0189
+behind, p=0.493, not significant either way. The honest reading is **a tie on
+ranking quality between two signals, one of which costs nothing to produce.**
+Jev's real advantages on this decision are calibration (ECE 0.258 vs 0.488) and
+usefulness at a fixed threshold (passed-subset EM 0.583 vs 0.456). A second
+label proxy — wrong *and* ungrounded — was tracked separately; on it **both**
+backends score worse than an uninformative signal (AURC 0.9053 and 0.8625
+against a 0.8167 random line).
 
-A smaller, earlier batch of 300 validation questions was generated in two
-batches using two different hosting setups for the same underlying model,
-because the first hosting provider ran out of usable credit partway through.
-The two batches disagreed on accuracy by about 15 percentage points — a real,
-investigated (not corrupted-data, not a bug) difference in how the two
-setups behave, reported as two disclosed subsets rather than averaged.
-
-### chunk-boundary — the generalization test
-
-The whole reason chunk-boundary exists: evidence-sufficiency alone can only
-prove the abstraction works for *one* decision. Chunk-boundary is
-structurally its opposite (one-shot vs. iterative), so plugging it into the
-identical `Decision` protocol and calibration harness without touching
-either is the actual acceptance test — and it passed, hash-verified before
-and after the live run, on a 60-paragraph Wikipedia article with 119
-candidate boundaries.
-
-It essentially **tied** a simple cosine-similarity baseline on ranking
-quality (AURC 0.2798 vs. 0.2894) there. But its calibration was dramatically
-better than sufficiency's, on the identical backend: ECE 0.087 and Brier
-skill +0.21, versus sufficiency's ECE 0.33 and Brier skill −0.45. **This is
-the project's central calibration finding: Jev's confidence is not
-uniformly trustworthy or untrustworthy — it depends on the specific
-question being asked.** "Is Jev well-calibrated?" doesn't have one answer;
-it depends what you ask it.
-
-**Retested twice on real documents, with a genuinely more informative
-picture than Wikipedia's alone.** A first real-document test used invalid
-ground truth (PDF page breaks mistaken for real paragraph breaks) and was
-correctly refused as uninterpretable rather than reported as a bad number.
-Corrected with real, human-verified section boundaries on the same
-document: Jev clearly beat cosine similarity this time (AURC 0.518 vs.
-0.654, both baselines moving from noise to real signal together,
-validating the fix), 100% recall on all 15 true section breaks, with every
-ranking error running in the safe direction for ingestion chunking
-(over-splitting inside long sections, never merging distinct topics). A
-second real document (a different paper, section *and* subsection
-boundaries) showed the pattern is real but not perfectly stable across
-documents: recall dropped to 72% there, with the instability traced
-specifically to subsection-level granularity — and even there, every
-miss but one was a benign same-topic merge, never a dangerous cross-topic
-one.
-
-### context-selection — wrapped vs. rebuilt, on two real benchmarks
-
-Real, already-shipped prior art exists for this decision (`rag-jev` on
-PyPI, evaluated by its own authors on the BEIR/SciFact benchmark). Rather
-than choosing between wrapping that package or building a from-scratch
-implementation, both were built and compared directly on the same harness.
-
-**On HotpotQA** (matched sample, n=192 candidate passages, same 20
-questions, same candidate construction verified down to zero mismatches):
-
-| | AURC | ECE | Brier skill |
-|---|---|---|---|
-| From-scratch (this repo) | 0.5412 | 0.1542 | +0.239 |
-| Wrapped `rag-jev` adapter | 0.5550 | 0.1805 | +0.121 |
-
-The AURC edge here was run through a paired significance test (paired
-bootstrap, 10,000 resamples): **real, p = 0.038** — though the confidence
-interval sits close enough to zero ([+0.0008, +0.0299]) that the honest
-description is "real but modest," not a decisive win.
-
-**On SciFact** (`rag-jev`'s own home benchmark, n=300 queries — the same
-scale as their published evaluation): the from-scratch implementation's own
-NDCG@10 reproduced `rag-jev`'s published headline number (0.7513) to
-within 0.012, and edged the wrapped adapter's reproduction by a further
-0.009 (0.7479 vs. 0.7390) — but **neither implementation actually beat the
-published number**; both land within noise of it, and the small edge over
-the wrapped adapter did not clear significance either (p = 0.234). This is
-the honest reading: a real, small, reproducible edge for the from-scratch
-build over the general-purpose wrapped package on HotpotQA specifically —
-not a claim of beating third-party published work, and not a claim that
-holds up equally on every benchmark tested.
-
-### answer-abstain — a post-generation grounding check, benchmarked against a free alternative
-
-Given the question, the retrieved evidence, and an already-generated
-answer, does the answer actually stay grounded? On 30 real HotpotQA
-questions: filtering out the gate's abstentions (27% abstain rate) lifts
-the exact-match accuracy of what actually reaches the user from 0.53
-(unfiltered) to 0.68 — a real, substantial quality improvement, not a
-sampling artifact.
-
-This decision was also benchmarked directly against a free, already-built
-alternative: a logprob-based trust signal (mean token log-probability of
-the generation, no extra model call needed) from a separate open-source
-tool. The two signals turned out to be **essentially tied on ranking
-quality** (AURC 0.154 vs. 0.163) — confirmed with a paired significance
-test (p = 0.879, a confidence interval more than ten times wider than the
-observed delta), not just judged as close by eye. The free signal is a
-real, legitimate alternative, not something this approach clearly
-obsoletes.
-
-A third signal was added to that same comparison later: **RAGAS's
-faithfulness metric** (an LLM-judge decomposition-and-verification method),
-scored on the identical 30 questions against the same EM ground truth.
-The headline is the confound, not the winner: with RAGAS's own default
-judge (gpt-4o-mini — the same model that generated the answers, so a
-self-judge), faithfulness ranks *worst* of the three (AURC 0.189); with a
-different-vendor judge (Gemini 2.5 Flash) it ranks *best* (AURC 0.100, vs.
-Jev's 0.154). The judge-model swing (0.09 AURC) is larger than any
-pairwise difference between the signals themselves, and no pairwise
-difference is statistically significant at n=30 (paired bootstrap, p ≥
-0.07; the largest gap, RAGAS[Gemini] vs. logprob, has a CI touching zero).
-Plainly: at this scale the abstention-gate comparison is **confound-limited,
-not signal-limited** — RAGAS's ranking depends more on the judge model than
-on its mechanism. Reusable script: `scripts/eval_ragas_faithfulness.py`
-(needs the `ragas` extra and live judge calls).
-
-**Security disclosure (2026-09-24):** the pinned `ragas==0.4.3` — every
-version in the `ragas` extra's supported range — has an unpatched SSRF in
-its multi-modal faithfulness collections module (attacker-controlled
-`retrieved_contexts` can force the library to fetch arbitrary URLs/local
-paths). No patched release exists yet; the vendor did not respond to
-disclosure. The `ragas` extra is never installed by default or in CI, and
-this project's own use of it only scores a fixed local benchmark dataset —
-but if you install `jevrag[ragas]` yourself, do not pass untrusted or
-externally-sourced text as `retrieved_contexts` until a fix ships. See the
-`[ragas]` extra's comment in `pyproject.toml` for the exact vulnerable
-functions.
-
-### cache-trust — extracted from real prior art, independently corroborated
-
-Real, shipped prior art exists for this decision (a cache-safety gate
-embedded in an open-source chat application's code) — not a standalone
-package, so wrapping it meant real extraction work, not a thin adapter.
-The extracted design (`cache_trust.py`) was ported faithfully: a purely
-structural state (similarity score, margin, entry age, TTL, conversation
-scoping — never the cached content itself, by the original design's own
-privacy-motivated choice) and two typed questions in one call, the first
-real test of both a non-text state and a multi-question call in this
-project. Both worked cleanly on the first live attempt.
-
-An easy first evaluation scored near-perfectly (AURC 0.146, Brier skill
-+0.96) — honestly flagged as measuring "the gate reads a clean signal
-correctly," not hard discrimination, since the test scenario was
-naturally bimodal. A deliberate, harder follow-up built genuinely
-ambiguous, near-threshold cases: performance held up close to oracle-level
-in exactly that harder region (AURC 0.043 vs. an oracle of 0.041), and
-every real error observed across both evaluations ran in the safe
-direction — the gate has never served a wrong cached answer, only
-occasionally regenerated when the cached one would have been fine.
-
-**Independently corroborated, not just self-evaluated.** A second design,
-built cold with zero exposure to the first implementation or its source
-material, converged on the same core architecture — same structural-only
-state, same two signal axes, same threshold-style verdict — real evidence
-the design is the natural solution to this decision, not an arbitrary one.
+**Security disclosure (2026-09-24):** the pinned `ragas==0.4.3` — every version
+in the `ragas` extra's supported range — has an unpatched SSRF in its
+multi-modal faithfulness collections module (attacker-controlled
+`retrieved_contexts` can force the library to fetch arbitrary URLs or local
+paths). No patched release exists; the vendor did not respond to disclosure.
+The `ragas` extra is never installed by default or in CI, and this project's
+own use of it only scores a fixed local benchmark dataset — but if you install
+`jevrag[ragas]` yourself, do not pass untrusted or externally-sourced text as
+`retrieved_contexts` until a fix ships. See the `[ragas]` extra's comment in
+`pyproject.toml` for the exact vulnerable functions.
 
 ### The real pipeline
 
@@ -582,7 +489,11 @@ ECE 0.31, Brier skill −0.20 — the same "ranks well, calibrates poorly"
 shape sufficiency showed, but from a backend with zero vendor model in
 it, which is real evidence the pattern isn't a Jev quirk. The mapping
 was frozen before running the eval and was not retuned to make that
-number look better.
+number look better. *(Those figures are the original n=30 run; the
+n=300 re-run in [Results at a glance](#results-at-a-glance) puts this
+backend at AURC 0.3310, ECE 0.4877, Brier skill −0.8764 — worse
+calibration, but nominally ahead of Jev on ranking (AURC 0.3310 vs
+0.3498; not significant, p=0.493).)*
 
 Every primitive now has a real, zero-cost baseline available to compare
 Jev against.
@@ -637,13 +548,17 @@ admittedly easy first scenario):
 | sufficiency (test, n=700) | multi-hop QA, iterative stopping | −0.45 |
 | SciFact / `rag-jev` reproduction (n=300×20) | scientific claim verification | −0.30 |
 | context-selection, `rag-jev` adapter (matched, n=192) | multi-hop QA relevance | +0.12 |
-| answer-abstain (n=30) | post-generation grounding | +0.07 |
+| answer-abstain (**n=300**; was n=30) | post-generation grounding | **−0.05** (n=30: +0.07) |
 | context-selection, from-scratch per-passage (matched, n=192) | multi-hop QA relevance | +0.24 |
 | chunk-boundary (n=119) | document structure | +0.21 |
 | context-selection, from-scratch batched (n=20, exploratory) | multi-hop QA relevance | +0.42 |
 | cache-trust (n=24, easy scenario) | cache safety | +0.96 |
 
-*(Higher is better; 0 = no better than the base rate, negative = worse than guessing.)*
+*(Higher is better; 0 = no better than the base rate, negative = worse than guessing.
+answer-abstain's row is the n=300 measurement from `outputs/v03_b1_summary_n300.json`;
+at n=30 it read +0.07 and the sign has since flipped, which is why the label carries
+both. Its Brier *score* is 0.2612 — Jev is still far better calibrated than the
+logprob backend it is compared against, whose skill is −0.88.)*
 
 **The pattern that holds across every
 measurement: Jev's confidence reliably *ranks* correct above incorrect —
@@ -722,7 +637,7 @@ scripts/
   report_shadow_ledger.py            # reads a shadow-mode ledger back into a report
   run_pipeline_doc.py                # runs the real end-to-end pipeline on a document
   snapshot_protected_hashes.py       # sha256 manifest proving a new primitive touched nothing protected
-tests/                               # 256 tests across all five primitives, the pipeline, and both new backends
+tests/                               # 282 tests across all five primitives, the pipeline, and both new backends
 ```
 
 `records/`, `reports/`, and `outputs/` are regenerated by running the
@@ -740,7 +655,8 @@ v0.2.0 pass (the real pipeline, the CRC calibration layer, a second
 scope expansion, done because it held up under the same rigor as V1, not
 because scope crept. See
 [What's actually built](#whats-actually-built-and-proven-so-far) for the
-full picture and the [Results](#results) section for what's still open
+full picture and the [Results](#results) section — with per-primitive detail in
+[docs/primitives.md](docs/primitives.md) — for what's still open
 (e.g. calibration is real but uneven, and CRC's own guarantee needed a
 real correction mid-build — both are findings, not defects).
 

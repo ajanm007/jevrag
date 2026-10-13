@@ -4,7 +4,7 @@ build-backend = "setuptools.build_meta"
 
 [project]
 name = "jevrag"
-version = "0.2.1"
+version = "0.3.0"
 description = "A decision-native RAG controller: state -> Decision -> confidence -> action"
 readme = "README.md"
 license = "MIT"
@@ -34,7 +34,9 @@ classifiers = [
 # that added this pin — see REPORT_MUSE_25.md. Do not "fix" CI by
 # widening this pin; fix selective.py instead, then unpin here.
 [project.optional-dependencies]
-test = ["pytest", "rag-jev", "rank-bm25", "pypdf", "numpy==2.3.5"]
+# openai: scripts/run_suite.py imports it, and tests/test_run_suite.py calls its
+# main(), so a bare `.[test]` install fails those tests without it.
+test = ["pytest", "rag-jev", "rank-bm25", "pypdf", "numpy==2.3.5", "openai"]
 # RAGAS is a real, optional *benchmark* dependency (packet CLINE_24): heavy
 # (pulls the langchain stack) and its faithfulness metric needs live
 # LLM-judge calls, so it is deliberately NOT in `test` — CI installs `.[test]`
